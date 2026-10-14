@@ -6,7 +6,8 @@ export const money = (n: number | null | undefined) => (n == null || !isFinite(n
 export const num = (n: number | null | undefined) => (n == null || !isFinite(n) ? "—" : int.format(n));
 export const pct = (n: number | null | undefined, d = 1) => (n == null || !isFinite(n) ? "—" : `${(n * 100).toFixed(d)}%`);
 export const ratio = (a: number, b: number) => (b > 0 ? a / b : null);
-export const costPer = (spend: number, n: number) => (n > 0 ? spend / n : null);
+export const costPer = (spend: number, n: number) => (n > 0 && spend > 0 ? spend / n : null);
+export const money0 = (n: number) => usd0.format(n);
 
 export const iso = (d: Date) => {
   const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000);

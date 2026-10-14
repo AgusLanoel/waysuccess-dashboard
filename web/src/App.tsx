@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, type DailyRow, type Level, type ReportRow, type SyncRow } from "./lib/supabase";
-import { addDays, costPer, iso, money, num, pct, ratio } from "./lib/format";
+import { addDays, costPer, iso, money, money0, num, pct, ratio } from "./lib/format";
 import { DailyChart } from "./components/Charts";
 
 export default function App() {
@@ -124,7 +124,7 @@ function sumRows(rows: ReportRow[]): ReportRow {
   return z;
 }
 
-function Dashboard({ email }: { email: string }) {
+export function Dashboard({ email }: { email: string }) {
   const [preset, setPreset] = useState<Preset>("7");
   const [[from, to], setRange] = useState(rangeFor("7"));
   const [level, setLevel] = useState<Level>("ad");
@@ -175,7 +175,7 @@ function Dashboard({ email }: { email: string }) {
     });
   }, [rows, sort, onlyActive]);
 
-  const total = useMemo(() => sumRows(rows), [rows]);
+  const total = useMemo(() => sumRows(rows.filter((r) => r.entity_id !== "__otra_cuenta")), [rows]);
   const dates = daily.map((d) => d.d);
 
   const kpis: [string, string, string?][] = [
@@ -234,7 +234,7 @@ function Dashboard({ email }: { email: string }) {
       </section>
 
       <section className="charts">
-        <DailyChart title="Inversión por día" kind="bar" dates={dates} fmt={(n) => money(n)} series={[{ key: "spend", label: "Inversión", color: "var(--series-1)", values: daily.map((d) => d.spend) }]} />
+        <DailyChart title="Inversión por día" kind="bar" dates={dates} fmt={money0} series={[{ key: "spend", label: "Inversión", color: "var(--series-1)", values: daily.map((d) => d.spend) }]} />
         <DailyChart
           title="Agendas por día"
           kind="line"
