@@ -13,9 +13,10 @@ Objetivo: ver, por cada anuncio de Meta, el gasto → agendas → calificadas �
 0. Accesos (este documento + GHL-CAMPOS.md). Listo el 2026-10-14: la Edge Function `check-access` confirmó los 3 secretos. Hay 17.479 contactos, 4.855 oportunidades y 3 calendarios en GHL, y 0 transacciones en GHL Payments.
 1. Captura del ad_id  ← en curso. Hallazgo del 2026-10-14: GHL guarda en `attributions[].url` la URL completa de la landing, con todos los parámetros. Los anuncios actuales ya mandan `utm_id` = ID de campaña y `utm_term` = un ID de Meta (parece el del conjunto), y `utm_content` sigue siendo un código manual. Para los anuncios nuevos alcanza con agregar `&ad_id={{ad.id}}` en "Parámetros de URL", sin tocar la landing GHL. Cuando el tráfico pase al funnel de Vercel, hay que sumar `ad_id` a `UTM_KEYS` (src/lib/site.ts), porque hoy solo reenvía utm_* al calendario. Ese cambio necesita aprobación.
    Cobrado: se carga a mano (llamadas de venta, no pasa por GHL). La fuente es la hoja "Tracker Ads" → Llamadas, y cada cobro necesita email o teléfono para cruzarlo con el contacto. ({{ad.id}} en anuncios nuevos + script en la landing + prueba de agenda)
-2. GHL como fuente de verdad (campos, pipeline, pagos)
-3. Datos (tablas, carga diaria de Meta, webhooks de GHL, importar el historial de la hoja)
-4. Dashboard
+2. GHL como fuente de verdad (campos, pipeline, pagos). Pospuesto: por ahora la hoja "Llamadas" es la fuente de asistencias, ofertas, cierres, vendido y cobrado.
+3. Datos. Listo el 2026-10-14. Las tablas están en Supabase y la carga es por pg_cron: Meta cada 2 h, GHL cada 20 min más una pasada diaria de 120 días. La hoja llega por Apps Script cada 15 min, **pendiente de instalar por el usuario** (`apps-script/SyncLlamadas.gs`; la versión con la clave está en `secrets/`). Detalle en `supabase/functions/README.md`.
+4. Dashboard. Listo el 2026-10-14 en https://waysuccess-dashboard.vercel.app (repo privado AgusLanoel/waysuccess-dashboard, root `web/`, cada push a main se publica). El acceso requiere login de Supabase y estar en `dashboard_members`. Los usuarios se crean con `select private.call_fn('admin-create-user', '{"email":"…","password":"…"}')`.
+   Definiciones: agenda = cita en los calendarios aLqJ…/l6nD…, contada por la fecha en que se agendó. Calificada = cita no cancelada (supuesto, a confirmar). Atribución = último clic (`lastAttributionSource` de GHL): `ad_id`, o `utm_content` numérico → anuncio; `utm_term` → conjunto; `utm_id` → campaña. Result. Meta = `offsite_conversion.fb_pixel_custom` (el Schedule que manda GHL por CAPI).
 5. Envío de etapas/valor a Meta (con aprobación)
 6. Validación semanal
 
