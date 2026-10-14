@@ -96,7 +96,7 @@ const COLS: Col[] = [
   { key: "spend", label: "Inversión", get: (r) => r.spend, fmt: money },
   { key: "agendas", label: "Agendas", title: "Contactos que agendaron en el período", get: (r) => r.agendas, fmt: num },
   { key: "cpa", label: "$ / agenda", get: (r) => costPer(r.spend, r.agendas), fmt: money },
-  { key: "calificadas", label: "Calificadas", title: "Agendas que no quedaron canceladas", get: (r) => r.calificadas, fmt: num },
+  { key: "calificadas", label: "Calificadas", title: "Agendas cuya facturación en el formulario no es \"Menos de…\" (el criterio con el que GHL cancela)", get: (r) => r.calificadas, fmt: num },
   { key: "cpq", label: "$ / calificada", get: (r) => costPer(r.spend, r.calificadas), fmt: money },
   { key: "qrate", label: "% calif.", get: (r) => ratio(r.calificadas, r.agendas), fmt: (n) => pct(n, 0) },
   { key: "meta_schedules", label: "Result. Meta", title: "Schedule que Meta recibió por API (calificadas, según Meta)", get: (r) => r.meta_schedules, fmt: num },
