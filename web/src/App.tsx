@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { supabase, type DailyRow, type Level, type ReportRow, type SyncRow } from "./lib/supabase";
+import { supabase, type DailyRow, type Level, type ReportRow, type SalesRow, type SyncRow } from "./lib/supabase";
 import { addDays, costPer, iso, money, money0, num, pct, ratio } from "./lib/format";
 import { DailyChart } from "./components/Charts";
 
@@ -131,6 +131,7 @@ export function Dashboard({ email }: { email: string }) {
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [daily, setDaily] = useState<DailyRow[]>([]);
   const [sync, setSync] = useState<SyncRow[]>([]);
+  const [sales, setSales] = useState<SalesRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "spend", dir: -1 });
@@ -149,9 +150,11 @@ export function Dashboard({ email }: { email: string }) {
       supabase.rpc("report", { p_from: from, p_to: to, p_level: level }),
       supabase.rpc("report_daily", { p_from: from, p_to: to }),
       supabase.rpc("sync_status"),
-    ]).then(([r, d, s]) => {
+      supabase.rpc("sales_summary", { p_from: from, p_to: to }),
+    ]).then(([r, d, s, v]) => {
       if (!alive) return;
-      const e = r.error ?? d.error ?? s.error;
+      const e = r.error ?? d.error ?? s.error ?? v.error;
+      setSales(((v.data ?? []) as SalesRow[]).map((x) => ({ ...x, vendido: Number(x.vendido), cobrado: Number(x.cobrado) })));
       if (e) setErr(e.message);
       setRows(((r.data ?? []) as ReportRow[]).map((x) => ({ ...x, spend: Number(x.spend), vendido: Number(x.vendido), cobrado: Number(x.cobrado) })));
       setDaily(((d.data ?? []) as DailyRow[]).map((x) => ({ ...x, spend: Number(x.spend), cobrado: Number(x.cobrado) })));
@@ -176,6 +179,7 @@ export function Dashboard({ email }: { email: string }) {
   }, [rows, sort, onlyActive]);
 
   const total = useMemo(() => sumRows(rows.filter((r) => r.entity_id !== "__otra_cuenta")), [rows]);
+  const closed = useMemo(() => sumRows(rows.filter((r) => r.entity_id === "__otra_cuenta")), [rows]);
   const dates = daily.map((d) => d.d);
 
   const kpis: [string, string, string?][] = [
@@ -184,8 +188,8 @@ export function Dashboard({ email }: { email: string }) {
     ["Calificadas", num(total.calificadas), `${money(costPer(total.spend, total.calificadas))} c/u`],
     ["Asistencias", num(total.asistencias), `${pct(ratio(total.asistencias, total.calificadas), 0)} de calificadas`],
     ["Cierres", num(total.cierres), `${pct(ratio(total.cierres, total.asistencias), 0)} de asistencias`],
-    ["Vendido", money(total.vendido)],
-    ["Cobrado", money(total.cobrado), total.spend > 0 ? `ROAS ${(total.cobrado / total.spend).toFixed(2)}x` : undefined],
+    ["Vendido", money(total.vendido), closed.vendido > 0 ? `+ ${money(closed.vendido)} de la cuenta cerrada` : undefined],
+    ["Cobrado", money(total.cobrado), [total.spend > 0 ? `ROAS ${(total.cobrado / total.spend).toFixed(2)}x` : "", closed.cobrado > 0 ? `+ ${money(closed.cobrado)} cuenta cerrada` : ""].filter(Boolean).join(" · ") || undefined],
   ];
 
   return (
@@ -232,6 +236,8 @@ export function Dashboard({ email }: { email: string }) {
           </div>
         ))}
       </section>
+
+      <SalesBySource rows={sales} />
 
       <section className="charts">
         <DailyChart title="Inversión por día" kind="bar" dates={dates} fmt={money0} series={[{ key: "spend", label: "Inversión", color: "var(--series-1)", values: daily.map((d) => d.spend) }]} />
@@ -340,6 +346,67 @@ export function Dashboard({ email }: { email: string }) {
         </p>
       </footer>
     </div>
+  );
+}
+
+// Ventas de todas las fuentes (hoja "Llamadas"), por fecha de la llamada.
+function SalesBySource({ rows }: { rows: SalesRow[] }) {
+  const t = rows.reduce(
+    (z, r) => ({ llamadas: z.llamadas + r.llamadas, asistencias: z.asistencias + r.asistencias, cierres: z.cierres + r.cierres, vendido: z.vendido + r.vendido, cobrado: z.cobrado + r.cobrado }),
+    { llamadas: 0, asistencias: 0, cierres: 0, vendido: 0, cobrado: 0 },
+  );
+  return (
+    <section className="card table-card">
+      <div className="table-head">
+        <strong>Ventas (todas las fuentes)</strong>
+        <span className="muted">Hoja “Llamadas”, por fecha de la llamada</span>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th className="name">Origen</th>
+              <th>Llamadas</th>
+              <th>Asistencias</th>
+              <th>Cierres</th>
+              <th>Vendido</th>
+              <th>Cobrado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.origen}>
+                <td className="name">{r.origen}</td>
+                <td>{num(r.llamadas)}</td>
+                <td>{num(r.asistencias)}</td>
+                <td>{num(r.cierres)}</td>
+                <td>{money(r.vendido)}</td>
+                <td>{money(r.cobrado)}</td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={6} className="empty">
+                  Sin llamadas en este período.
+                </td>
+              </tr>
+            )}
+          </tbody>
+          {rows.length > 0 && (
+            <tfoot>
+              <tr>
+                <td className="name">Total</td>
+                <td>{num(t.llamadas)}</td>
+                <td>{num(t.asistencias)}</td>
+                <td>{num(t.cierres)}</td>
+                <td>{money(t.vendido)}</td>
+                <td>{money(t.cobrado)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+    </section>
   );
 }
 
