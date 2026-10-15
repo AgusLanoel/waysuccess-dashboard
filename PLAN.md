@@ -1,4 +1,4 @@
-# Dashboard de atribución WaySuccess (tipo Hyros)
+﻿# Dashboard de atribución WaySuccess (tipo Hyros)
 
 Objetivo: ver, por cada anuncio de Meta, el gasto → agendas → calificadas → asistencias → ofertas → cierres → vendido → cobrado.
 
@@ -31,10 +31,18 @@ Se usa local, sin gastar en hosting: acceso directo "Dashboard WaySuccess" en el
 ## Para retomar (2026-10-14)
 1. Verificar en GHL (Chrome "Browser 2") que el email de rechazo de la rama None del workflow "Confirmación de Calificación — WaySuccess" (555fa79f-…) quedó borrado y guardado. Se tocó Delete, pero el navegador dejó de responder y no se confirmó.
 2. Decidir si se borra el proyecto de Vercel (Hobby = uso no comercial). Hace falta el OK del usuario.
-3. El usuario instala el Apps Script en la hoja "Tracker Ads" (ventas, asistencias, cobrado).
+3. El usuario instala el Apps Script (`secrets/SyncLlamadas_CON_CLAVE.gs`) en la hoja **"WaySucess - Tracker Comercial"** (id 105oZEzxIuvon9f37P2sK_HIQ0vxUFVOnntER-NaiLRk), pestaña Llamadas. Desde el 2026-10-15 esta es la fuente de ventas; reemplaza a "Tracker Ads".
 4. Cambiar la contraseña inicial desde el botón "Contraseña" del dashboard.
 5. Definir quién más tiene acceso (Ale, Zulia, closers).
 6. Siguiente proyecto: flujo de email marketing.
+
+## Atribución por anuncio (2026-10-15)
+El formulario GHL "Funnel ADS" (zVtzBzpnciZhkDpAq1ul) guarda utm_source (campo FX69lW9hbVHb7rDApCoA), utm_medium (HsU5r1aGIuls9VwfHiQl) y dos campos con utm_campaign/utm_content (CvJKxtD5kd7XYFUOSgj8 y j42OHsWSKDVvMWkv48Le). Los nombres de esos dos están cruzados: j42O tiene el código del anuncio. Ese código es el mismo que viene en la URL.
+- Los anuncios actuales llevan en utm_content un código manual que coincide con el nombre del anuncio dentro del conjunto (E-AD02 → "E-AD02", ORG-04 → "ORG-04-Variable", TRTFCMARIO → "TRT FC MARIO").
+- `public.match_ad(adset, código)` resuelve el anuncio. Primero busca un nombre igual, después uno que empiece con el código, y si el conjunto tiene un solo anuncio usa ese. Si hay ambigüedad devuelve null.
+- `v_contact_attribution` lo usa cuando no hay ad_id en la URL.
+- Verificado con el gasto: cada código recibe agendas en el anuncio que concentra el gasto de su campaña.
+- Riesgo: si alguien copia un anuncio sin cambiar el utm_content, las agendas de la copia se van al original. Por eso conviene sumar `&ad_id={{ad.id}}` en los anuncios nuevos.
 
 ## Decisiones
 - 2026-10-14: los anuncios activos con la promesa vieja (50/50, "2.000 leads") quedan prendidos por decisión del usuario.

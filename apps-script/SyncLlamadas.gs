@@ -1,24 +1,29 @@
 /**
- * WaySuccess — envía la pestaña "Llamadas" al dashboard (Supabase) cada 15 minutos.
+ * WaySuccess — envía la pestaña "Llamadas" de "WaySucess - Tracker Comercial" al dashboard (Supabase) cada 15 minutos.
  * Instalación: Extensiones → Apps Script → pegar este archivo → ejecutar `instalar` una vez y aceptar permisos.
+ * Las columnas se leen por el nombre del encabezado, así que se pueden agregar o mover columnas sin romper nada.
  */
 const ENDPOINT = 'https://iqiyhlcqnxwtdhmmrlsp.supabase.co/functions/v1/sheet-ingest';
 const SHEET_KEY = '__SHEET_KEY__';
 const TAB = 'Llamadas';
-const COLS = 38; // A..AL
 
 function enviarLlamadas() {
   const sh = SpreadsheetApp.getActive().getSheetByName(TAB);
-  const last = sh.getLastRow();
+  const width = sh.getLastColumn();
   // La fila de encabezados es la que tiene "Fecha LLamada Calendar" en la columna A.
-  const top = sh.getRange(1, 1, 8, COLS).getDisplayValues();
+  const top = sh.getRange(1, 1, 8, width).getDisplayValues();
   const h = top.findIndex(r => /fecha\s*llamada/i.test(r[0]));
   if (h < 0) throw new Error('No encontré la fila de encabezados en ' + TAB);
-  const objections = top[h - 1].slice(14, 33).map(s => String(s).trim()); // O..AG, nombres en la fila de arriba
+  const headers = top[h];
+  const above = h > 0 ? top[h - 1] : []; // nombres de las objeciones
   const first = h + 2; // primera fila de datos (1-based)
-  if (last < first) return;
+  // Última fila con nombre del lead (la hoja tiene fórmulas hasta muy abajo)
+  const names = sh.getRange(first, 2, Math.max(sh.getLastRow() - first + 1, 1), 1).getValues();
+  let n = names.length;
+  while (n > 0 && String(names[n - 1][0]).trim() === '') n--;
+  if (n === 0) return;
   const tz = Session.getScriptTimeZone();
-  const values = sh.getRange(first, 1, last - first + 1, COLS).getValues();
+  const values = sh.getRange(first, 1, n, width).getValues();
   const rows = values.map((v, i) => ({
     row: first + i,
     v: v.map(x => x instanceof Date ? Utilities.formatDate(x, tz, 'yyyy-MM-dd') : x),
@@ -27,7 +32,7 @@ function enviarLlamadas() {
     method: 'post',
     contentType: 'application/json',
     headers: { 'x-sheet-key': SHEET_KEY },
-    payload: JSON.stringify({ rows, objections }),
+    payload: JSON.stringify({ headers, above, rows }),
     muteHttpExceptions: true,
   });
   console.log(res.getResponseCode() + ' ' + res.getContentText());
