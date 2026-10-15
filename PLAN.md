@@ -47,7 +47,7 @@ El formulario GHL "Funnel ADS" (zVtzBzpnciZhkDpAq1ul) guarda utm_source (campo F
 ## Ajustes 2026-10-15
 - El dashboard es SOLO Ads (pedido del usuario). No mostrar ventas orgánicas, de afiliados ni de referidos.
 - `is_paid`: es pago si tiene IDs de Meta, o si la fuente es Meta y el medium no es social/bio/organic/reels. Los links de la bio de IG son orgánicos.
-- Las ventas de Ads de la cuenta cerrada van en la fila "Anuncios de otra cuenta (cerrada)" y como sub-línea de los KPI Vendido y Cobrado.
+- La cuenta cerrada 1376171866434598 se suma al total (gasto y ventas), por pedido del usuario. Su gasto de jul–oct 2026 (119 anuncios, $10.116) se cargó una sola vez desde la conexión Meta del usuario, porque el token de sistema no tiene permiso sobre ella. sync-meta solo actualiza la cuenta USA. Las tablas meta_ads y meta_insights_daily tienen la columna account_id.
 - `link_sheet_calls` necesita `where s.row_num >= 0` porque pg_safeupdate bloquea los UPDATE sin WHERE.
 - `secrets/SyncLlamadas_CON_CLAVE.gs` es obsoleto: la hoja se autentica con el token de identidad de Google.
 

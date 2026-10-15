@@ -175,21 +175,18 @@ export function Dashboard({ email }: { email: string }) {
     });
   }, [rows, sort, onlyActive]);
 
-  // Los totales incluyen las ventas de anuncios de la cuenta cerrada (son Ads); el ROAS solo usa la cuenta USA, que es la que tiene gasto cargado.
   const total = useMemo(() => sumRows(rows), [rows]);
-  const closed = useMemo(() => sumRows(rows.filter((r) => r.entity_id === "__otra_cuenta")), [rows]);
-  const usaCobrado = total.cobrado - closed.cobrado;
   const dates = daily.map((d) => d.d);
 
   const kpis: [string, string, string?][] = [
     ["Inversión", money(total.spend)],
     ["Agendas", num(total.agendas), `${money(costPer(total.spend, total.agendas))} c/u`],
     ["Calificadas", num(total.calificadas), `${money(costPer(total.spend, total.calificadas))} c/u`],
-    ["Asistencias", num(total.asistencias), closed.asistencias > 0 ? `${num(closed.asistencias)} de la cuenta cerrada` : `${pct(ratio(total.asistencias, total.calificadas), 0)} de calificadas`],
+    ["Asistencias", num(total.asistencias), `${pct(ratio(total.asistencias, total.calificadas), 0)} de calificadas`],
     ["Cierres", num(total.cierres), `${pct(ratio(total.cierres, total.asistencias), 0)} de asistencias`],
-    ["Vendido", money(total.vendido), closed.vendido > 0 ? `${money(closed.vendido)} de anuncios de la cuenta cerrada` : undefined],
-    ["Cobrado", money(total.cobrado), closed.cobrado > 0 ? `${money(closed.cobrado)} de la cuenta cerrada` : undefined],
-    ["ROAS", total.spend > 0 ? `${(usaCobrado / total.spend).toFixed(2)}x` : "—", total.spend > 0 ? `Cobrado ÷ inversión · vendido ${((total.vendido - closed.vendido) / total.spend).toFixed(2)}x` : "Sin inversión en el período"],
+    ["Vendido", money(total.vendido)],
+    ["Cobrado", money(total.cobrado), undefined],
+    ["ROAS", total.spend > 0 ? `${(total.cobrado / total.spend).toFixed(2)}x` : "—", total.spend > 0 ? `Cobrado ÷ inversión · vendido ${(total.vendido / total.spend).toFixed(2)}x` : "Sin inversión en el período"],
   ];
 
   return (
@@ -316,7 +313,7 @@ export function Dashboard({ email }: { email: string }) {
                 <tr>
                   <td className="name">Total</td>
                   {COLS.map((c) => (
-                    <td key={c.key}>{c.key === "roas" ? c.fmt(total.spend > 0 ? usaCobrado / total.spend : null) : c.fmt(c.get(total))}</td>
+                    <td key={c.key}>{c.fmt(c.get(total))}</td>
                   ))}
                 </tr>
               </tfoot>
