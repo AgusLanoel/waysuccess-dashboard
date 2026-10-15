@@ -40,16 +40,6 @@ export interface DailyRow {
   meta_schedules: number;
 }
 
-export interface SalesRow {
-  origen: string;
-  llamadas: number;
-  asistencias: number;
-  ofertas: number;
-  cierres: number;
-  vendido: number;
-  cobrado: number;
-}
-
 export interface SyncRow {
   source: string;
   last_ok: string | null;
