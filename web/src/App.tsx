@@ -188,7 +188,8 @@ export function Dashboard({ email }: { email: string }) {
     ["Asistencias", num(total.asistencias), closed.asistencias > 0 ? `${num(closed.asistencias)} de la cuenta cerrada` : `${pct(ratio(total.asistencias, total.calificadas), 0)} de calificadas`],
     ["Cierres", num(total.cierres), `${pct(ratio(total.cierres, total.asistencias), 0)} de asistencias`],
     ["Vendido", money(total.vendido), closed.vendido > 0 ? `${money(closed.vendido)} de anuncios de la cuenta cerrada` : undefined],
-    ["Cobrado", money(total.cobrado), [closed.cobrado > 0 ? `${money(closed.cobrado)} de la cuenta cerrada` : "", total.spend > 0 ? `ROAS USA ${(usaCobrado / total.spend).toFixed(2)}x` : ""].filter(Boolean).join(" · ") || undefined],
+    ["Cobrado", money(total.cobrado), closed.cobrado > 0 ? `${money(closed.cobrado)} de la cuenta cerrada` : undefined],
+    ["ROAS", total.spend > 0 ? `${(usaCobrado / total.spend).toFixed(2)}x` : "—", total.spend > 0 ? `Cobrado ÷ inversión · vendido ${((total.vendido - closed.vendido) / total.spend).toFixed(2)}x` : "Sin inversión en el período"],
   ];
 
   return (
