@@ -25,5 +25,16 @@ Objetivo: ver, por cada anuncio de Meta, el gasto → agendas → calificadas �
 - GHL_PIT_TOKEN
 - GHL_LOCATION_ID
 
+## Cómo abrirlo
+Se usa local, sin gastar en hosting: acceso directo "Dashboard WaySuccess" en el escritorio → `Abrir dashboard.bat` → http://localhost:5190. Los datos se siguen cargando solos en Supabase por cron.
+
+## Para retomar (2026-10-14)
+1. Verificar en GHL (Chrome "Browser 2") que el email de rechazo de la rama None del workflow "Confirmación de Calificación — WaySuccess" (555fa79f-…) quedó borrado y guardado. Se tocó Delete, pero el navegador dejó de responder y no se confirmó.
+2. Decidir si se borra el proyecto de Vercel (Hobby = uso no comercial). Hace falta el OK del usuario.
+3. El usuario instala el Apps Script en la hoja "Tracker Ads" (ventas, asistencias, cobrado).
+4. Cambiar la contraseña inicial desde el botón "Contraseña" del dashboard.
+5. Definir quién más tiene acceso (Ale, Zulia, closers).
+6. Siguiente proyecto: flujo de email marketing.
+
 ## Decisiones
 - 2026-10-14: los anuncios activos con la promesa vieja (50/50, "2.000 leads") quedan prendidos por decisión del usuario.
