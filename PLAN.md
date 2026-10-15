@@ -44,5 +44,12 @@ El formulario GHL "Funnel ADS" (zVtzBzpnciZhkDpAq1ul) guarda utm_source (campo F
 - Verificado con el gasto: cada código recibe agendas en el anuncio que concentra el gasto de su campaña.
 - Riesgo: si alguien copia un anuncio sin cambiar el utm_content, las agendas de la copia se van al original. Por eso conviene sumar `&ad_id={{ad.id}}` en los anuncios nuevos.
 
+## Ajustes 2026-10-15
+- El dashboard es SOLO Ads (pedido del usuario). No mostrar ventas orgánicas, de afiliados ni de referidos.
+- `is_paid`: es pago si tiene IDs de Meta, o si la fuente es Meta y el medium no es social/bio/organic/reels. Los links de la bio de IG son orgánicos.
+- Las ventas de Ads de la cuenta cerrada van en la fila "Anuncios de otra cuenta (cerrada)" y como sub-línea de los KPI Vendido y Cobrado.
+- `link_sheet_calls` necesita `where s.row_num >= 0` porque pg_safeupdate bloquea los UPDATE sin WHERE.
+- `secrets/SyncLlamadas_CON_CLAVE.gs` es obsoleto: la hoja se autentica con el token de identidad de Google.
+
 ## Decisiones
 - 2026-10-14: los anuncios activos con la promesa vieja (50/50, "2.000 leads") quedan prendidos por decisión del usuario.
