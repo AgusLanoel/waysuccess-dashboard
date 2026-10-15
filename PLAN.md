@@ -31,7 +31,7 @@ Se usa local, sin gastar en hosting: acceso directo "Dashboard WaySuccess" en el
 ## Para retomar (2026-10-14)
 1. Verificar en GHL (Chrome "Browser 2") que el email de rechazo de la rama None del workflow "Confirmación de Calificación — WaySuccess" (555fa79f-…) quedó borrado y guardado. Se tocó Delete, pero el navegador dejó de responder y no se confirmó.
 2. Decidir si se borra el proyecto de Vercel (Hobby = uso no comercial). Hace falta el OK del usuario.
-3. El usuario instala el Apps Script (`secrets/SyncLlamadas_CON_CLAVE.gs`) en la hoja **"WaySucess - Tracker Comercial"** (id 105oZEzxIuvon9f37P2sK_HIQ0vxUFVOnntER-NaiLRk), pestaña Llamadas. Desde el 2026-10-15 esta es la fuente de ventas; reemplaza a "Tracker Ads".
+3. LISTO el 2026-10-15. La fuente de ventas es la hoja **"WaySucess - Tracker Comercial"** (id 105oZEzxIuvon9f37P2sK_HIQ0vxUFVOnntER-NaiLRk), pestaña Llamadas. Reemplaza a "Tracker Ads". La envía cada 15 minutos el proyecto de Apps Script independiente "WaySuccess - Sync ventas al dashboard" (script.google.com, cuenta /u/1), que usa el código de `apps-script/` y se autentica con el token de identidad de Google, sin clave. La cuenta y el aud quedaron fijados en settings.sheet_identity; para cambiarlos, poner `{"pending":true}`.
 4. Cambiar la contraseña inicial desde el botón "Contraseña" del dashboard.
 5. Definir quién más tiene acceso (Ale, Zulia, closers).
 6. Siguiente proyecto: flujo de email marketing.

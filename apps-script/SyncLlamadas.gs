@@ -1,14 +1,15 @@
-/**
+﻿/**
  * WaySuccess — envía la pestaña "Llamadas" de "WaySucess - Tracker Comercial" al dashboard (Supabase) cada 15 minutos.
- * Instalación: Extensiones → Apps Script → pegar este archivo → ejecutar `instalar` una vez y aceptar permisos.
+ * Proyecto de Apps Script independiente (script.google.com), así no se mezcla con los scripts propios de la hoja.
+ * Instalación: pegar este archivo y appsscript.json → ejecutar `instalar` una vez y aceptar permisos.
  * Las columnas se leen por el nombre del encabezado, así que se pueden agregar o mover columnas sin romper nada.
  */
 const ENDPOINT = 'https://iqiyhlcqnxwtdhmmrlsp.supabase.co/functions/v1/sheet-ingest';
-const SHEET_KEY = '__SHEET_KEY__';
+const SHEET_ID = '105oZEzxIuvon9f37P2sK_HIQ0vxUFVOnntER-NaiLRk'; // WaySucess - Tracker Comercial
 const TAB = 'Llamadas';
 
 function enviarLlamadas() {
-  const sh = SpreadsheetApp.getActive().getSheetByName(TAB);
+  const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(TAB);
   const width = sh.getLastColumn();
   // La fila de encabezados es la que tiene "Fecha LLamada Calendar" en la columna A.
   const top = sh.getRange(1, 1, 8, width).getDisplayValues();
@@ -31,7 +32,7 @@ function enviarLlamadas() {
   const res = UrlFetchApp.fetch(ENDPOINT, {
     method: 'post',
     contentType: 'application/json',
-    headers: { 'x-sheet-key': SHEET_KEY },
+    headers: { Authorization: 'Bearer ' + ScriptApp.getIdentityToken() }, // identifica la cuenta de Google; sin claves en el código
     payload: JSON.stringify({ headers, above, rows }),
     muteHttpExceptions: true,
   });
