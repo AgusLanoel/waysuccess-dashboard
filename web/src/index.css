@@ -134,3 +134,10 @@ tfoot td { font-weight: 700; border-bottom: 0; border-top: 2px solid var(--borde
   th.name, td.name { min-width: 160px; }
   .kpi-value { font-size: 20px; }
 }
+
+.verdict { display: inline-block; margin-top: 3px; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
+.v-kill { color: #e5484d; }
+.v-win { color: #30a46c; }
+.v-keep { color: #30a46c; opacity: .8; }
+.v-cand { color: #3b82f6; }
+.v-test { color: var(--muted); }

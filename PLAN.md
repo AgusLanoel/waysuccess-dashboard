@@ -51,5 +51,14 @@ El formulario GHL "Funnel ADS" (zVtzBzpnciZhkDpAq1ul) guarda utm_source (campo F
 - `link_sheet_calls` necesita `where s.row_num >= 0` porque pg_safeupdate bloquea los UPDATE sin WHERE.
 - `secrets/SyncLlamadas_CON_CLAVE.gs` es obsoleto: la hoja se autentica con el token de identidad de Google.
 
+## Tracking de asistencias y ventas a Meta (propuesto 2026-10-15, pendiente de arrancar)
+Regla: las conversiones salen solo desde GHL, nunca desde el navegador.
+1. Auditoría (solo lectura): LISTA el 2026-10-15. GHL de WaySuccess = subcuenta J6gWPpvSKle7WCautNaq (Chrome "Browser 1"). Los 10 workflows se disparan por cita agendada, formulario enviado o cambio de etapa del pipeline; ninguno por tag, así que tags nuevos no activan nada existente. El Schedule sale de "API Filtro de Calendario - CP USA" (rama Califica → acción "Meta Conversion API", píxel 1577062573609595, evento Schedule, campo Value acepta valores personalizados). Los workflows nuevos copian esa acción con evento Purchase y Value = monto vendido.
+   Pendiente aparte: el email de rechazo de la rama None de "Confirmación de Calificación — WaySuccess" sigue activo (asunto "Sobre tu solicitud de llamada con WaySuccess").
+2. Supabase → GHL: cuando la hoja marca a un contacto de Ads como asistió o vendido, sheet-ingest le agrega un tag (`ws-asistio`, `ws-venta`) y guarda el monto en un campo personalizado. Cada fila se marca una sola vez (sin duplicados).
+3. GHL: dos workflows nuevos que se disparan solo con esos tags y mandan por Conversions API, al mismo píxel que hoy recibe el Schedule (Pixel Waysuccess USA 1577062573609595), un evento de asistencia y un Purchase con el monto.
+4. Prueba con un contacto de prueba → verificar en Events Manager → recién ahí se activa para todos.
+No cambia lo que optimizan las campañas actuales (siguen en Schedule). Sirve para ver ventas en Meta y, más adelante, optimizar a esos eventos en la ABO Madre.
+
 ## Decisiones
 - 2026-10-14: los anuncios activos con la promesa vieja (50/50, "2.000 leads") quedan prendidos por decisión del usuario.

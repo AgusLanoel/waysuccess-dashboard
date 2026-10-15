@@ -112,6 +112,25 @@ const COLS: Col[] = [
   { key: "v2a", label: "Visita → agenda", get: (r) => ratio(r.agendas, r.landing_page_views), fmt: (n) => pct(n, 1) },
 ];
 
+// Estándares de optimización (skill meta-ads → waysuccess-standards.md). Cortes derivados del 1/9 al 15/10/2026.
+const STD = { targetCpq: 174, killSpend: 350, reviewSpend: 500, maxCpq: 260 };
+
+function verdict(r: ReportRow): { label: string; cls: string; why: string } | null {
+  if (r.entity_id.startsWith("__") || r.spend <= 0) return null;
+  const cpq = r.calificadas > 0 ? r.spend / r.calificadas : null;
+  if (r.asistencias > 0 || r.cierres > 0)
+    return r.calificadas >= 2 && cpq != null && cpq <= STD.targetCpq
+      ? { label: "Ganador", cls: "v-win", why: `${r.asistencias} asistencias y calificada a ${money(cpq)}` }
+      : { label: "No tocar", cls: "v-keep", why: `Tiene ${r.asistencias} asistencias${r.cierres ? ` y ${r.cierres} cierres` : ""}` };
+  if (r.calificadas === 0)
+    return r.spend >= STD.killSpend
+      ? { label: "Apagar", cls: "v-kill", why: `${money(r.spend)} gastados sin calificadas` }
+      : { label: "En prueba", cls: "v-test", why: `${money(r.spend)} de ${money(STD.killSpend)} sin calificada` };
+  if (r.spend >= STD.reviewSpend && cpq! > STD.maxCpq) return { label: "Apagar", cls: "v-kill", why: `Calificada a ${money(cpq)} con ${money(r.spend)} gastados` };
+  if (cpq! <= STD.targetCpq) return { label: "Candidato", cls: "v-cand", why: `Calificada a ${money(cpq)} (objetivo ${money(STD.targetCpq)}); falta una asistencia` };
+  return { label: "En prueba", cls: "v-test", why: `Calificada a ${money(cpq)}, por encima del objetivo` };
+}
+
 function sumRows(rows: ReportRow[]): ReportRow {
   const z: ReportRow = {
     entity_id: "total", entity_name: "Total", parent_name: null, status: null, thumbnail_url: null,
@@ -292,6 +311,10 @@ export function Dashboard({ email }: { email: string }) {
                           {r.entity_name}
                         </div>
                         {r.parent_name && <div className="sub">{r.parent_name}</div>}
+                        {level !== "campaign" && (r.status === "ACTIVE" || r.spend > 0) && (() => {
+                          const v = verdict(r);
+                          return v && <span className={`verdict ${v.cls}`} title={v.why}>{v.label}</span>;
+                        })()}
                       </div>
                     </div>
                   </td>
