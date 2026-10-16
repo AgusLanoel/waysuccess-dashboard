@@ -155,10 +155,36 @@ export function Dashboard({ email }: { email: string }) {
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "spend", dir: -1 });
   const [onlyActive, setOnlyActive] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (preset !== "custom") setRange(rangeFor(preset));
   }, [preset]);
+
+  // Trae Meta y GHL al momento: al abrir el dashboard y con el botón "Actualizar".
+  async function refresh() {
+    setRefreshing(true);
+    const { data, error } = await supabase.rpc("refresh_now");
+    if (error) {
+      setErr(error.message);
+      setRefreshing(false);
+      return;
+    }
+    const since = new Date((data as string | null) ?? Date.now() - 180_000).getTime();
+    for (let i = 0; i < 24; i++) {
+      await new Promise((r) => setTimeout(r, 10_000));
+      const s = await supabase.rpc("sync_status");
+      const meta = ((s.data ?? []) as SyncRow[]).find((x) => x.source === "meta");
+      if (meta?.last_ok && new Date(meta.last_ok).getTime() >= since) break;
+    }
+    setRefreshing(false);
+    setReloadKey((k) => k + 1);
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -180,7 +206,7 @@ export function Dashboard({ email }: { email: string }) {
     return () => {
       alive = false;
     };
-  }, [from, to, level]);
+  }, [from, to, level, reloadKey]);
 
   const visible = useMemo(() => {
     const col = COLS.find((c) => c.key === sort.key);
@@ -214,6 +240,9 @@ export function Dashboard({ email }: { email: string }) {
         <div className="brand">WaySuccess · Ads</div>
         <div className="user">
           <span className="muted">{email}</span>
+          <button className="link" onClick={refresh} disabled={refreshing}>
+            {refreshing ? "Actualizando…" : "Actualizar"}
+          </button>
           <button className="link" onClick={() => setShowPw((v) => !v)}>
             Contraseña
           </button>

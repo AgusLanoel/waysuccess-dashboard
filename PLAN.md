@@ -51,6 +51,11 @@ El formulario GHL "Funnel ADS" (zVtzBzpnciZhkDpAq1ul) guarda utm_source (campo F
 - `link_sheet_calls` necesita `where s.row_num >= 0` porque pg_safeupdate bloquea los UPDATE sin WHERE.
 - `secrets/SyncLlamadas_CON_CLAVE.gs` es obsoleto: la hoja se autentica con el token de identidad de Google.
 
+## Actualización a pedido (2026-10-15)
+- Al abrir el dashboard y con el botón "Actualizar" se llama a `public.refresh_now()`, que dispara sync-meta y sync-ghl (14 días) al momento. Tarda unos 10 segundos y después recarga los datos. Hay un solo disparo cada 3 minutos (settings.last_refresh).
+- Si piden "actualizá" en el chat: `select private.call_fn('sync-meta','{}'), private.call_fn('sync-ghl','{"days_back":14}')`.
+- Los crons de fondo siguen (Meta cada 2 h, GHL cada 20 min).
+
 ## Tracking de asistencias y ventas a Meta (propuesto 2026-10-15, pendiente de arrancar)
 Regla: las conversiones salen solo desde GHL, nunca desde el navegador.
 1. Auditoría (solo lectura): LISTA el 2026-10-15. GHL de WaySuccess = subcuenta J6gWPpvSKle7WCautNaq (Chrome "Browser 1"). Los 10 workflows se disparan por cita agendada, formulario enviado o cambio de etapa del pipeline; ninguno por tag, así que tags nuevos no activan nada existente. El Schedule sale de "API Filtro de Calendario - CP USA" (rama Califica → acción "Meta Conversion API", píxel 1577062573609595, evento Schedule, campo Value acepta valores personalizados). Los workflows nuevos copian esa acción con evento Purchase y Value = monto vendido.
