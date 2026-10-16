@@ -56,6 +56,14 @@ El formulario GHL "Funnel ADS" (zVtzBzpnciZhkDpAq1ul) guarda utm_source (campo F
 - Si piden "actualizá" en el chat: `select private.call_fn('sync-meta','{}'), private.call_fn('sync-ghl','{"days_back":14}')`.
 - Los crons de fondo siguen (Meta cada 2 h, GHL cada 20 min).
 
+## Anuncios: estado al 2026-10-16 (cuenta USA 1327704949277228)
+- Poda del 15/10: quedó 1 anuncio por CBO en Estáticos 2 (E2-AD04), Estáticos DFY (E-AD02) y VSL Mismo Video (ORG-04); 13 anuncios pausados. ESTÁTICOS WN sin tocar (gasto repartido).
+- Gasto actual ~$315/día (9 campañas × $35). Techo propuesto $300–350/día hasta ROAS cobrado 30d ≥ 3x dos semanas seguidas; las CBOs nuevas entran cuando se apaga otra.
+- BORRADOR (sin publicar), config del ganador TIBIO-Stack90d (públicos IG 90d, 5 ciudades, Schedule, 7d clic/1d vista/1d video): campañas 120247015990420088 (CBO-02 Hook A, 4 anuncios), 120247015990640088 (CBO-03 Hook D, 3), 120247015990680088 (CBO-05 Hook C, 2). Página Alessandro Guzman, texto basado en T-AD03 sin "50%" ni cifras sin respaldo, link home-usa-ads, url_tags estándar (utm_campaign VSL-HOOKA/D/C), Advantage+ creativo apagado. Videos subidos a la biblioteca de Meta por el usuario.
+- PENDIENTE antes de publicar: el borrador solo muestra cuenta de Instagram en CBO-02-AD01; el usuario la editó a mano pero no se ve reflejado. Verificar Identidad → Instagram en los 9 (sobre todo Hook D). Portadas = miniatura de baja resolución de Meta.
+- Mañana: refresh del dashboard → poda (TRT FC MARIO TIBIO/FRIO si siguen sin calificadas; ESTÁTICOS WN) → el usuario publica las 3 campañas.
+- Pendiente con el usuario: comisiones, costo de entrega y si el resto de los $30k se cobra (para fijar el ROAS cobrado mínimo exacto en el dashboard). CBO-01, 04 y 06 esperan lugar (CBO-01 y 06 tienen claims a revisar).
+
 ## Tracking de asistencias y ventas a Meta (propuesto 2026-10-15, pendiente de arrancar)
 Regla: las conversiones salen solo desde GHL, nunca desde el navegador.
 1. Auditoría (solo lectura): LISTA el 2026-10-15. GHL de WaySuccess = subcuenta J6gWPpvSKle7WCautNaq (Chrome "Browser 1"). Los 10 workflows se disparan por cita agendada, formulario enviado o cambio de etapa del pipeline; ninguno por tag, así que tags nuevos no activan nada existente. El Schedule sale de "API Filtro de Calendario - CP USA" (rama Califica → acción "Meta Conversion API", píxel 1577062573609595, evento Schedule, campo Value acepta valores personalizados). Los workflows nuevos copian esa acción con evento Purchase y Value = monto vendido.
