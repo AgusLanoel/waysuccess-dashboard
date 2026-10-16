@@ -22,6 +22,7 @@ export interface ReportRow {
   meta_schedules: number;
   agendas: number;
   calificadas: number;
+  calificadas_jessik: number;
   asistencias: number;
   ofertas: number;
   cierres: number;

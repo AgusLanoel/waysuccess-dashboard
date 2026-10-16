@@ -96,7 +96,8 @@ const COLS: Col[] = [
   { key: "spend", label: "Inversión", get: (r) => r.spend, fmt: money },
   { key: "agendas", label: "Agendas", title: "Contactos que agendaron en el período", get: (r) => r.agendas, fmt: num },
   { key: "cpa", label: "$ / agenda", get: (r) => costPer(r.spend, r.agendas), fmt: money },
-  { key: "calificadas", label: "Calificadas", title: "Agendas cuya facturación en el formulario no es \"Menos de…\" (el criterio con el que GHL cancela)", get: (r) => r.calificadas, fmt: num },
+  { key: "calificadas", label: "Calif. DFY", title: "Agendas con facturación de US$20k/mes o más (rama \"Califica\" de GHL, la que se manda a Meta)", get: (r) => r.calificadas, fmt: num },
+  { key: "calificadas_jessik", label: "Calif. JessiK", title: "Agendas con facturación de US$5k a US$20k/mes (rama \"Califica a JessiK\", downsell; no se manda a Meta)", get: (r) => r.calificadas_jessik ?? 0, fmt: num },
   { key: "cpq", label: "$ / calificada", get: (r) => costPer(r.spend, r.calificadas), fmt: money },
   { key: "qrate", label: "% calif.", get: (r) => ratio(r.calificadas, r.agendas), fmt: (n) => pct(n, 0) },
   { key: "meta_schedules", label: "Result. Meta", title: "Schedule que Meta recibió por API (calificadas, según Meta)", get: (r) => r.meta_schedules, fmt: num },
@@ -135,10 +136,10 @@ function sumRows(rows: ReportRow[]): ReportRow {
   const z: ReportRow = {
     entity_id: "total", entity_name: "Total", parent_name: null, status: null, thumbnail_url: null,
     spend: 0, impressions: 0, clicks: 0, link_clicks: 0, landing_page_views: 0, meta_schedules: 0,
-    agendas: 0, calificadas: 0, asistencias: 0, ofertas: 0, cierres: 0, vendido: 0, cobrado: 0,
+    agendas: 0, calificadas: 0, calificadas_jessik: 0, asistencias: 0, ofertas: 0, cierres: 0, vendido: 0, cobrado: 0,
   };
   for (const r of rows)
-    for (const k of ["spend", "impressions", "clicks", "link_clicks", "landing_page_views", "meta_schedules", "agendas", "calificadas", "asistencias", "ofertas", "cierres", "vendido", "cobrado"] as const)
+    for (const k of ["spend", "impressions", "clicks", "link_clicks", "landing_page_views", "meta_schedules", "agendas", "calificadas", "calificadas_jessik", "asistencias", "ofertas", "cierres", "vendido", "cobrado"] as const)
       z[k] += Number(r[k]) || 0;
   return z;
 }
@@ -226,7 +227,8 @@ export function Dashboard({ email }: { email: string }) {
   const kpis: [string, string, string?][] = [
     ["Inversión", money(total.spend)],
     ["Agendas", num(total.agendas), `${money(costPer(total.spend, total.agendas))} c/u`],
-    ["Calificadas", num(total.calificadas), `${money(costPer(total.spend, total.calificadas))} c/u`],
+    ["Calificadas DFY", num(total.calificadas), `${money(costPer(total.spend, total.calificadas))} c/u`],
+    ["Calificadas JessiK", num(total.calificadas_jessik ?? 0), "US$5k–20k/mes · downsell"],
     ["Asistencias", num(total.asistencias), `${pct(ratio(total.asistencias, total.calificadas), 0)} de calificadas`],
     ["Cierres", num(total.cierres), `${pct(ratio(total.cierres, total.asistencias), 0)} de asistencias`],
     ["Vendido", money(total.vendido)],
