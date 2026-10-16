@@ -141,3 +141,8 @@ tfoot td { font-weight: 700; border-bottom: 0; border-top: 2px solid var(--borde
 .v-keep { color: #30a46c; opacity: .8; }
 .v-cand { color: #3b82f6; }
 .v-test { color: var(--muted); }
+.ent a { color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor; }
+.ent a:hover { color: var(--series-1, #1686c4); }
+.ent a.lib { font-size: 11px; font-weight: 500; border: 1px solid currentColor; border-radius: 6px; padding: 0 5px; opacity: .7; }
+.section-title { font-size: 15px; margin: 0; }
+table.cierres td a { color: inherit; }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { supabase, type DailyRow, type Level, type ReportRow, type SyncRow } from "./lib/supabase";
+import { supabase, type CierreRow, type DailyRow, type Level, type ReportRow, type SyncRow } from "./lib/supabase";
 import { addDays, costPer, iso, money, money0, num, pct, ratio } from "./lib/format";
 import { DailyChart } from "./components/Charts";
 
@@ -151,6 +151,7 @@ export function Dashboard({ email }: { email: string }) {
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [daily, setDaily] = useState<DailyRow[]>([]);
   const [sync, setSync] = useState<SyncRow[]>([]);
+  const [cierres, setCierres] = useState<CierreRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "spend", dir: -1 });
@@ -195,13 +196,15 @@ export function Dashboard({ email }: { email: string }) {
       supabase.rpc("report", { p_from: from, p_to: to, p_level: level }),
       supabase.rpc("report_daily", { p_from: from, p_to: to }),
       supabase.rpc("sync_status"),
-    ]).then(([r, d, s]) => {
+      supabase.rpc("cierres", { p_from: from, p_to: to }),
+    ]).then(([r, d, s, c]) => {
       if (!alive) return;
-      const e = r.error ?? d.error ?? s.error;
+      const e = r.error ?? d.error ?? s.error ?? c.error;
       if (e) setErr(e.message);
       setRows(((r.data ?? []) as ReportRow[]).map((x) => ({ ...x, spend: Number(x.spend), vendido: Number(x.vendido), cobrado: Number(x.cobrado) })));
       setDaily(((d.data ?? []) as DailyRow[]).map((x) => ({ ...x, spend: Number(x.spend), cobrado: Number(x.cobrado) })));
       setSync((s.data ?? []) as SyncRow[]);
+      setCierres(((c.data ?? []) as CierreRow[]).map((x) => ({ ...x, vendido: Number(x.vendido), cobrado: Number(x.cobrado) })));
       setLoading(false);
     });
     return () => {
@@ -339,7 +342,14 @@ export function Dashboard({ email }: { email: string }) {
                       <div>
                         <div className="ent">
                           {r.status === "ACTIVE" && <span className="live" title="Activo" />}
-                          {r.entity_name}
+                          {r.preview_url ? (
+                            <a href={r.preview_url} target="_blank" rel="noreferrer" title="Ver el anuncio en Meta">{r.entity_name}</a>
+                          ) : (
+                            r.entity_name
+                          )}
+                          {level === "ad" && r.page_id && (
+                            <a className="lib" href={adLibrary(r.page_id)} target="_blank" rel="noreferrer" title="Biblioteca de anuncios de la página">Biblioteca</a>
+                          )}
                         </div>
                         {r.parent_name && <div className="sub">{r.parent_name}</div>}
                         {level !== "campaign" && (r.status === "ACTIVE" || r.spend > 0) && (() => {
@@ -376,9 +386,57 @@ export function Dashboard({ email }: { email: string }) {
         </div>
       </section>
 
+      <section className="card table-card">
+        <div className="table-head">
+          <h2 className="section-title">Cierres de Ads · {cierres.length}</h2>
+          <span className="muted">Fecha = ingreso del cliente · vendido {money(cierres.reduce((t, x) => t + x.vendido, 0))} · cobrado {money(cierres.reduce((t, x) => t + x.cobrado, 0))}</span>
+        </div>
+        <div className="table-wrap">
+          <table className="cierres">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th className="name">Cliente</th>
+                <th>Teléfono</th>
+                <th>Email</th>
+                <th>Closer</th>
+                <th>Vendido</th>
+                <th>Cobrado</th>
+                <th className="name">Campaña</th>
+                <th className="name">Conjunto</th>
+                <th className="name">Anuncio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cierres.map((x, i) => (
+                <tr key={`${x.email ?? x.nombre}-${i}`}>
+                  <td>{x.fecha}</td>
+                  <td className="name">{x.nombre ?? "—"}</td>
+                  <td>{x.telefono ?? "—"}</td>
+                  <td>{x.email ? <a href={`mailto:${x.email}`}>{x.email}</a> : "—"}</td>
+                  <td>{x.closer ?? "—"}</td>
+                  <td>{money(x.vendido)}</td>
+                  <td>{money(x.cobrado)}</td>
+                  <td className="name">{x.campaign_name ?? "—"}{x.cuenta === "Cerrada" && <span className="sub"> · cuenta cerrada</span>}</td>
+                  <td className="name">{x.adset_name ?? "—"}</td>
+                  <td className="name">
+                    {x.preview_url ? <a href={x.preview_url} target="_blank" rel="noreferrer">{x.ad_name}</a> : x.ad_name ?? "Sin anuncio identificado"}
+                  </td>
+                </tr>
+              ))}
+              {!loading && cierres.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="empty">Sin cierres de Ads en este período.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <footer className="foot muted">
         <p>
-          Atribución: último clic de anuncio antes de agendar. Agendas y calificadas por fecha en que se agendó; asistencias, cierres, vendido y cobrado por fecha de la llamada
+          Atribución: último clic de anuncio antes de agendar. Agendas y calificadas por fecha en que se agendó; asistencias por fecha de la llamada; cierres, vendido y cobrado por fecha de ingreso del cliente
           (hoja “Llamadas”). “Sin anuncio identificado” = agendas de anuncios cuyo link todavía no trae <code>ad_id</code>: se sabe el conjunto, no el anuncio.
           “Anuncios sin ID en la URL” = vinieron de Meta con un link sin parámetros de anuncio ni de conjunto.
         </p>
@@ -397,6 +455,9 @@ export function Dashboard({ email }: { email: string }) {
     </div>
   );
 }
+
+const adLibrary = (pageId: string) =>
+  `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=ALL&media_type=all&search_type=page&view_all_page_id=${pageId}`;
 
 function ChangePassword({ onDone }: { onDone: () => void }) {
   const [pw, setPw] = useState("");

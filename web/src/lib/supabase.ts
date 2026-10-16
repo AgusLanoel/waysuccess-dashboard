@@ -21,6 +21,8 @@ export interface ReportRow {
   landing_page_views: number;
   meta_schedules: number;
   agendas: number;
+  preview_url?: string | null;
+  page_id?: string | null;
   calificadas: number;
   calificadas_jessik: number;
   asistencias: number;
@@ -45,4 +47,22 @@ export interface SyncRow {
   source: string;
   last_ok: string | null;
   last_error: string | null;
+}
+
+export interface CierreRow {
+  fecha: string;
+  nombre: string | null;
+  telefono: string | null;
+  email: string | null;
+  closer: string | null;
+  modalidad: string | null;
+  vendido: number;
+  cobrado: number;
+  campaign_name: string | null;
+  adset_name: string | null;
+  ad_name: string | null;
+  ad_id: string | null;
+  preview_url: string | null;
+  page_id: string | null;
+  cuenta: string;
 }
