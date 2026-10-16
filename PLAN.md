@@ -75,5 +75,11 @@ Regla: las conversiones salen solo desde GHL, nunca desde el navegador.
 4. Prueba con un contacto de prueba → verificar en Events Manager → recién ahí se activa para todos.
 No cambia lo que optimizan las campañas actuales (siguen en Schedule). Sirve para ver ventas en Meta y, más adelante, optimizar a esos eventos en la ABO Madre.
 
+## Fecha de las ventas (2026-10-16)
+- Cierres, vendido y cobrado se fechan por la columna "Fecha de ingreso de cliente" (G) de la hoja Llamadas, no por la fecha de la llamada. La hoja solo trae mes y año ("octubre 2026") o "No cerrado".
+- sheet-ingest v6 guarda `ingreso_mes` (día 1 del mes) e `ingreso_raw`. `public.sale_date(call_date, ingreso_mes)`: si la llamada cayó en ese mes usa el día de la llamada; si no, el día 1 del mes de ingreso.
+- "No cerrado" no cuenta como cierre ni vendido; su cobrado (reservas) sí se suma.
+- Asistencias y ofertas siguen por fecha de llamada; agendas y calificadas por fecha de agenda.
+
 ## Decisiones
 - 2026-10-14: los anuncios activos con la promesa vieja (50/50, "2.000 leads") quedan prendidos por decisión del usuario.
