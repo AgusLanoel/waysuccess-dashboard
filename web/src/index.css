@@ -162,3 +162,16 @@ td.warn { color: var(--critical); }
 .issue { width: 100%; display: flex; justify-content: space-between; gap: 12px; background: none; border: 0; border-bottom: 1px solid var(--border); padding: 9px 2px; cursor: pointer; font-size: 13px; text-align: left; }
 .issue:hover { background: var(--surface-2); }
 .issue-list { padding: 6px 2px 10px; font-size: 13px; display: grid; gap: 4px; max-height: 260px; overflow-y: auto; }
+
+/* Vista empresa */
+table.empresa th.grp { text-align: center; color: #fff; border-left: 2px solid var(--surface); }
+.grp-comercial { background: #1f3a68 !important; }
+.grp-marketing { background: #2e8b57 !important; }
+.grp-ads { background: #3fa060 !important; }
+.grp-organico { background: #e39a1c !important; }
+.grp-referidos { background: #6a4bc4 !important; }
+.grp-afiliados { background: #2f6fd1 !important; }
+table.empresa td.vs { font-size: 12px; color: var(--muted); border-right: 1px solid var(--border); }
+table.empresa td.vs.up { color: var(--good); }
+table.empresa td.vs.down { color: var(--critical); }
+.small { font-size: 12px; margin: 8px 0 0; }

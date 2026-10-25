@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase, type ComercialData, type FunnelRow } from "../lib/supabase";
 import { money, num, pct, ratio } from "../lib/format";
+import { VistaEmpresa } from "./VistaEmpresa";
 
 const PRODUCTOS = ["DFY", "JessiK", "Sin definir"] as const;
 
@@ -76,6 +77,8 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
   return (
     <>
       {err && <p className="error">Error: {err}</p>}
+
+      <VistaEmpresa from={from} to={to} reloadKey={reloadKey} />
 
       <section className="kpis" aria-busy={loading}>
         {kpis.map(([label, value, sub]) => (
@@ -168,7 +171,7 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
           <table className="cierres">
             <thead>
               <tr>
-                <th>Fecha</th><th className="name">Cliente</th><th>Closer</th><th>Producto</th><th>Vendido</th><th>Cobrado</th><th>Plan</th><th>Método</th><th>Días a cierre</th><th>Origen</th>
+                <th>Fecha</th><th className="name">Cliente</th><th>Closer</th><th>Producto</th><th>Vendido</th><th>Cobrado</th><th>Plan</th><th>Método</th><th>Días a cierre</th><th>Fuente</th>
               </tr>
             </thead>
             <tbody>
@@ -183,7 +186,7 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
                   <td>{x.plan_pago ?? "—"}</td>
                   <td>{x.metodo_cobro ?? "—"}</td>
                   <td>{x.dias_a_cierre ?? "—"}</td>
-                  <td>{x.historico ? "Histórico" : x.de_ads ? "Ads" : "Otro"}</td>
+                  <td>{x.fuente ?? "—"}</td>
                 </tr>
               ))}
               {!loading && !data?.cierres.length && (
