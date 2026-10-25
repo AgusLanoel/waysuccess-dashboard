@@ -1,0 +1,8 @@
+-- 25-10 (aplicado como migraciones enriquecer_oportunidades y show_rate_llamadas_pasadas + parches con pg_get_viewdef/functiondef):
+-- * Campos de oportunidad creados por API: Negocio (IY39CxRNwT2zrliR1m2v), Facturación (ZnfR8qZ4t3njSn8SUO7W),
+--   Costo de la agenda (IwgVTFlWipNY1Ih1rtf5) -> settings.ghl_opp_enrich_fields.
+-- * v_opp_enriquecer: Negocio = contacto Zx82M03hxVfg98NtIvGD; Facturación = income_answer(); Costo = inversión del anuncio ÷ agendas
+--   del anuncio (fallback conjunto, campaña; orgánico 0). Solo oportunidades con cita en el calendario StartFly y vistas por el sync en 24 h.
+-- * enriquecer_oportunidades(): manda a ghl-write solo lo que cambió (máx. 120); cron 'enriquecer-oportunidades' 12,32,52 * * * *.
+-- * Tarjeta del pipeline (GHL → Opportunities → Manage fields): Source, Value, Negocio, Facturación, Costo de la agenda.
+-- * Show rate: v_com_calls_todas + com_calls_snap tienen "inicio"; comercial() agrega llamadas_pasadas (inicio < now()).
