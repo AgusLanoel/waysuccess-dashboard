@@ -109,3 +109,11 @@ export interface EmpresaRow {
   cobrado: number;
   comisiones: number;
 }
+
+export interface MiDiaData {
+  closer: string | null;
+  hoy: string;
+  llamadas: { id: string; contact_id: string | null; closer: string; hora: string; dia: string; nombre: string | null; telefono: string | null; email: string | null; etapa: string | null; producto: string; fuente: string | null; ingresos: string | null; negocio: string | null; status: string }[];
+  seguimientos: { id: string; contact_id: string | null; nombre: string | null; telefono: string | null; closer: string | null; etapa: string; producto: string; motivo: string | null; proximo_seguimiento: string | null; historico: boolean }[];
+  pendientes: { id: string; contact_id: string | null; nombre: string | null; closer: string | null; etapa: string; historico: boolean; problema: string }[];
+}

@@ -4,6 +4,7 @@ import { supabase, type CierreRow, type DailyRow, type Level, type ReportRow, ty
 import { addDays, costPer, iso, money, money0, num, pct, ratio } from "./lib/format";
 import { DailyChart } from "./components/Charts";
 import { Comercial } from "./components/Comercial";
+import { MiDia } from "./components/MiDia";
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -162,8 +163,15 @@ export function Dashboard({ email }: { email: string }) {
   const [reloadKey, setReloadKey] = useState(0);
   // Ads (inversión, anuncios, ROAS) solo para rol owner; la base también lo bloquea.
   const [role, setRole] = useState<string | null>(null);
-  const [tab, setTab] = useState<"comercial" | "ads">("comercial");
+  const [tab, setTab] = useState<"comercial" | "midia" | "ads">("comercial");
   const isOwner = role === "owner";
+  const esCloser = role === "closer";
+  // Closer: Mi día + sus números. Owner: además Ads (la base también lo bloquea para el resto).
+  const TABS: ["comercial" | "midia" | "ads", string][] = esCloser
+    ? [["midia", "Mi día"], ["comercial", "Mis números"]]
+    : isOwner
+      ? [["comercial", "Comercial"], ["midia", "Mi día"], ["ads", "Ads"]]
+      : [["comercial", "Comercial"], ["midia", "Mi día"]];
 
   useEffect(() => {
     if (preset !== "custom") setRange(rangeFor(preset));
@@ -191,7 +199,10 @@ export function Dashboard({ email }: { email: string }) {
 
   useEffect(() => {
     refresh();
-    supabase.rpc("my_role").then(({ data }) => setRole((data as string | null) ?? null));
+    supabase.rpc("my_role").then(({ data }) => {
+      setRole((data as string | null) ?? null);
+      if (data === "closer") setTab("midia");
+    });
   }, []);
 
   useEffect(() => {
@@ -271,12 +282,14 @@ export function Dashboard({ email }: { email: string }) {
       {showPw && <ChangePassword onDone={() => setShowPw(false)} />}
 
       <div className="filters">
-        {isOwner && (
+        {role && (
           <div className="seg tabs" role="tablist" aria-label="Sección">
-            <button className={tab === "comercial" ? "on" : ""} onClick={() => setTab("comercial")}>Comercial</button>
-            <button className={tab === "ads" ? "on" : ""} onClick={() => setTab("ads")}>Ads</button>
+            {TABS.map(([k, l]) => (
+              <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
+            ))}
           </div>
         )}
+        {tab !== "midia" && (
         <div className="seg" role="tablist" aria-label="Período">
           {PRESETS.map(([p, l]) => (
             <button key={p} className={preset === p ? "on" : ""} onClick={() => setPreset(p)}>
@@ -284,7 +297,8 @@ export function Dashboard({ email }: { email: string }) {
             </button>
           ))}
         </div>
-        {preset === "custom" && (
+        )}
+        {tab !== "midia" && preset === "custom" && (
           <div className="dates">
             <input type="date" value={from} max={to} onChange={(e) => setRange([e.target.value, to])} />
             <span className="muted">a</span>
@@ -293,7 +307,9 @@ export function Dashboard({ email }: { email: string }) {
         )}
       </div>
 
-      {tab === "comercial" || !isOwner ? (
+      {tab === "midia" ? (
+        <MiDia esCloser={esCloser} reloadKey={reloadKey} />
+      ) : tab === "comercial" || !isOwner ? (
         <Comercial from={from} to={to} reloadKey={reloadKey} />
       ) : (
       <>
