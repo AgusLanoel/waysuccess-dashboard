@@ -66,3 +66,29 @@ export interface CierreRow {
   page_id: string | null;
   cuenta: string;
 }
+
+export interface FunnelRow {
+  producto: string;
+  periodo: "actual" | "anterior";
+  agendas: number;
+  llamadas: number;
+  canceladas: number;
+  asistencias: number;
+  asistencias_calificadas: number;
+  ofertas: number;
+  cierres: number;
+  cierres_nuevos: number;
+  cierres_seguimiento: number;
+  vendido: number;
+  cobrado: number;
+  vendido_ads: number;
+}
+
+export interface ComercialData {
+  funnel: FunnelRow[];
+  closers: { closer: string; active: boolean; llamadas: number; asistencias: number; ofertas: number; cierres: number; vendido: number; cobrado: number; comision: number; en_seguimiento: number }[];
+  objeciones: { motivo: string; producto: string; n: number }[];
+  seguimientos: { id: string; nombre: string | null; closer: string | null; producto: string; etapa: string; motivo: string | null; proximo_seguimiento: string | null; primera_llamada: string | null; historico: boolean; dias_en_etapa: number | null }[];
+  calidad: { id: string; nombre: string | null; closer: string | null; etapa: string; historico: boolean; problema: string }[];
+  cierres: { fecha_cierre: string; nombre: string | null; closer: string | null; producto: string; valor: number; cobrado: number; plan_pago: string | null; metodo_cobro: string | null; saldo_pendiente: number | null; primera_llamada: string | null; dias_a_cierre: number | null; de_ads: boolean; historico: boolean }[];
+}

@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase, type CierreRow, type DailyRow, type Level, type ReportRow, type SyncRow } from "./lib/supabase";
 import { addDays, costPer, iso, money, money0, num, pct, ratio } from "./lib/format";
 import { DailyChart } from "./components/Charts";
+import { Comercial } from "./components/Comercial";
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -31,8 +32,8 @@ function Login() {
   return (
     <div className="center">
       <form className="card login" onSubmit={submit}>
-        <div className="brand">WaySuccess · Ads</div>
-        <p className="muted">Dashboard de atribución por anuncio</p>
+        <div className="brand">WaySuccess</div>
+        <p className="muted">Dashboard comercial y de anuncios</p>
         <label>
           Email
           <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -159,6 +160,10 @@ export function Dashboard({ email }: { email: string }) {
   const [showPw, setShowPw] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Ads (inversión, anuncios, ROAS) solo para rol owner; la base también lo bloquea.
+  const [role, setRole] = useState<string | null>(null);
+  const [tab, setTab] = useState<"comercial" | "ads">("comercial");
+  const isOwner = role === "owner";
 
   useEffect(() => {
     if (preset !== "custom") setRange(rangeFor(preset));
@@ -186,9 +191,11 @@ export function Dashboard({ email }: { email: string }) {
 
   useEffect(() => {
     refresh();
+    supabase.rpc("my_role").then(({ data }) => setRole((data as string | null) ?? null));
   }, []);
 
   useEffect(() => {
+    if (tab !== "ads" || !isOwner) return;
     let alive = true;
     setLoading(true);
     setErr(null);
@@ -210,7 +217,7 @@ export function Dashboard({ email }: { email: string }) {
     return () => {
       alive = false;
     };
-  }, [from, to, level, reloadKey]);
+  }, [from, to, level, reloadKey, tab, isOwner]);
 
   const visible = useMemo(() => {
     const col = COLS.find((c) => c.key === sort.key);
@@ -242,7 +249,7 @@ export function Dashboard({ email }: { email: string }) {
   return (
     <div className="page">
       <header className="topbar">
-        <div className="brand">WaySuccess · Ads</div>
+        <div className="brand">WaySuccess</div>
         <div className="user">
           <span className="muted">{email}</span>
           <button className="link" onClick={refresh} disabled={refreshing}>
@@ -259,6 +266,12 @@ export function Dashboard({ email }: { email: string }) {
       {showPw && <ChangePassword onDone={() => setShowPw(false)} />}
 
       <div className="filters">
+        {isOwner && (
+          <div className="seg tabs" role="tablist" aria-label="Sección">
+            <button className={tab === "comercial" ? "on" : ""} onClick={() => setTab("comercial")}>Comercial</button>
+            <button className={tab === "ads" ? "on" : ""} onClick={() => setTab("ads")}>Ads</button>
+          </div>
+        )}
         <div className="seg" role="tablist" aria-label="Período">
           {PRESETS.map(([p, l]) => (
             <button key={p} className={preset === p ? "on" : ""} onClick={() => setPreset(p)}>
@@ -275,6 +288,10 @@ export function Dashboard({ email }: { email: string }) {
         )}
       </div>
 
+      {tab === "comercial" || !isOwner ? (
+        <Comercial from={from} to={to} reloadKey={reloadKey} />
+      ) : (
+      <>
       {err && <p className="error">Error: {err}</p>}
 
       <section className="kpis" aria-busy={loading}>
@@ -452,6 +469,8 @@ export function Dashboard({ email }: { email: string }) {
               ))}
         </p>
       </footer>
+      </>
+      )}
     </div>
   );
 }
