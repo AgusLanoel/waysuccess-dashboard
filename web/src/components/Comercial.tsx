@@ -60,15 +60,21 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
   }, [data]);
   const maxObj = Math.max(1, ...objeciones.map((o) => o.total));
 
-  const kpis: [string, string, string?][] = t && p
+  const dfy = f("DFY"), jes = f("JessiK"), sd = f("Sin definir");
+  // [título, valor, subtítulo, explicación al pasar el mouse]
+  const kpis: [string, string, string?, string?][] = t && p
     ? [
-        ["Agendas", num(t.agendas), delta(t.agendas, p.agendas)],
-        ["Llamadas", num(t.llamadas), `${num(t.canceladas)} canceladas`],
-        ["Asistencias", num(t.asistencias), `${pct(ratio(t.asistencias, t.llamadas), 0)} de las llamadas`],
-        ["Ofertas", num(t.ofertas), `${pct(ratio(t.ofertas, t.asistencias), 0)} de asistencias`],
-        ["Cierres", num(t.cierres), t.cierres_nuevos + t.cierres_seguimiento ? `${num(t.cierres_nuevos)} nuevos · ${num(t.cierres_seguimiento)} de seguimiento` : undefined],
-        ["Vendido", money(t.vendido), delta(t.vendido, p.vendido)],
-        ["Cobrado", money(t.cobrado), `${pct(ratio(t.cobrado, t.vendido), 0)} de lo vendido`],
+        ["Agendas brutas", num(t.agendas), `${num(dfy?.agendas)} DFY · ${num(jes?.agendas)} JessiK · ${num(sd?.agendas)} no califican · ${delta(t.agendas, p.agendas)}`,
+          "Personas que reservaron una llamada en el período (por fecha de reserva), califiquen o no. DFY = facturan US$20k+/mes; JessiK = US$5k–20k; no califican = menos de US$5k o sin respuesta."],
+        ["Llamadas programadas", num(t.llamadas), `${num(t.canceladas)} canceladas o reagendadas aparte`,
+          "Citas cuya fecha de llamada cae en el período y no fueron canceladas. Puede incluir reservas de períodos anteriores."],
+        ["Show rate", pct(ratio(t.asistencias, t.llamadas), 0), `${num(t.asistencias)} asistencias de ${num(t.llamadas)} llamadas`,
+          "Asistencias ÷ llamadas programadas. Asistió = “¿Asistió?” en Sí, o la oportunidad pasó a P1, P3, P5, Reserva, 2da llamada o Cerrado."],
+        ["Ofertas", num(t.ofertas), `${pct(ratio(t.ofertas, t.asistencias), 0)} de las asistencias`, "Asistencias con “¿Se realizó la oferta?” = Sí."],
+        ["Cierres", num(t.cierres), t.cierres_nuevos + t.cierres_seguimiento ? `${num(t.cierres_nuevos)} nuevos · ${num(t.cierres_seguimiento)} de seguimiento` : undefined,
+          "Ventas ganadas por fecha de cierre. Nuevo = la primera llamada fue en el mismo mes; de seguimiento = en un mes anterior."],
+        ["Vendido", money(t.vendido), delta(t.vendido, p.vendido), "Suma del valor de los contratos cerrados en el período."],
+        ["Cobrado", money(t.cobrado), `${pct(ratio(t.cobrado, t.vendido), 0)} de lo vendido`, "Efectivo cobrado de las ventas cerradas en el período."],
         ["Cash pendiente", money(t.vendido - t.cobrado), "Vendido − cobrado de esas ventas"],
         ["Ticket promedio", money(t.cierres ? t.cobrado / t.cierres : null), `Cobrado ÷ cierres · contrato promedio ${money(t.cierres ? t.vendido / t.cierres : null)}`],
       ]
@@ -81,8 +87,8 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
       <VistaEmpresa from={from} to={to} reloadKey={reloadKey} />
 
       <section className="kpis" aria-busy={loading}>
-        {kpis.map(([label, value, sub]) => (
-          <div key={label} className="kpi">
+        {kpis.map(([label, value, sub, help]) => (
+          <div key={label} className="kpi" title={help}>
             <div className="kpi-label">{label}</div>
             <div className="kpi-value">{value}</div>
             {sub && <div className="kpi-sub">{sub}</div>}

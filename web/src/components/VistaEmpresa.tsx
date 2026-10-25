@@ -12,9 +12,9 @@ const PRODUCTOS: [string, string][] = [
 type Kind = "n" | "p" | "m";
 // Mismas filas y fórmulas que la "Vista empresa" del sheet comercial
 const FILAS: { label: string; kind: Kind; get: (r: EmpresaRow) => number | null }[] = [
-  { label: "Agendas", kind: "n", get: (r) => r.agendas },
+  { label: "Agendas brutas", kind: "n", get: (r) => r.agendas },
   { label: "Asistencias", kind: "n", get: (r) => r.asistencias },
-  { label: "% Asistencia", kind: "p", get: (r) => ratio(r.asistencias, r.agendas) },
+  { label: "% Asistencia (÷ agendas)", kind: "p", get: (r) => ratio(r.asistencias, r.agendas) },
   { label: "Asistencias calificadas", kind: "n", get: (r) => r.asistencias_calificadas },
   { label: "% Asistencias calificadas", kind: "p", get: (r) => ratio(r.asistencias_calificadas, r.asistencias) },
   { label: "Ofertas", kind: "n", get: (r) => r.ofertas },
@@ -23,7 +23,7 @@ const FILAS: { label: string; kind: Kind; get: (r: EmpresaRow) => number | null 
   { label: "Cierres en seguimiento", kind: "n", get: (r) => r.cierres_seguimiento },
   { label: "Cierres totales", kind: "n", get: (r) => r.cierres_totales },
   { label: "Clientes nuevos", kind: "n", get: (r) => r.clientes_nuevos },
-  { label: "% Cierre", kind: "p", get: (r) => ratio(r.cierres, r.asistencias) },
+  { label: "% Cierre (÷ asistencias)", kind: "p", get: (r) => ratio(r.cierres, r.asistencias) },
   { label: "Vendido", kind: "m", get: (r) => Number(r.vendido) },
   { label: "Cobrado", kind: "m", get: (r) => Number(r.cobrado) },
   { label: "Ticket promedio", kind: "m", get: (r) => (r.cierres_totales ? Number(r.cobrado) / r.cierres_totales : null) },
