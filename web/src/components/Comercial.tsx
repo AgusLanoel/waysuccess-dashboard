@@ -289,7 +289,8 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
 
       <footer className="foot muted">
         <p>
-          Fuente: GHL (pipeline “2. Leads (Agendado) - Venta”). Agendas por fecha de reserva; llamadas, asistencias y ofertas por fecha de llamada (citas del GHL nuevo, desde el 21-10);
+          Fuente: GHL StartFly (pipeline “2. Leads (Agendado) - Venta”), en vivo cada 20 minutos. Antes del 21-10 (migración), llamadas y agendas salen del archivo congelado
+          (hoja “Llamadas” y GHL viejo); las ventas siempre salen de StartFly. Agendas por fecha de reserva; llamadas, asistencias y ofertas por fecha de llamada;
           cierres, vendido y cobrado por fecha de cierre. Asistió = “¿Asistió?” en Sí, cita marcada como asistida, o la oportunidad ya pasó a P1/P3/P5/Reserva/Cerrado.
           Cobrado = campo “$Efectivo recolectado” hasta que se conecten Whop y Stripe.
         </p>
