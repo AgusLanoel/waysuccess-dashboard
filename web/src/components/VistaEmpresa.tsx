@@ -114,7 +114,7 @@ export function VistaEmpresa({ from, to, reloadKey }: { from: string; to: string
       </div>
       <p className="muted small">
         Comparación contra el período anterior del mismo largo. Comercial = todas las fuentes; Marketing = Ads + Orgánico. Fuente: campo “Fuente” del contacto en GHL
-        (Referidos / Afiliados); si no, Ads cuando vino de un anuncio, si no Orgánico. Antes del 21-10, la columna “Origen” de la hoja. Cierres = primera llamada en el
+        (Referidos / Afiliados); si no, Ads cuando vino de un anuncio, si no Orgánico. Cierres = primera llamada en el
         mismo mes; en seguimiento = de meses anteriores. % Cierre = cierres ÷ asistencias. Ticket = cobrado ÷ cierres totales.
       </p>
     </section>

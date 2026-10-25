@@ -103,7 +103,7 @@ const COLS: Col[] = [
   { key: "cpq", label: "$ / calificada", get: (r) => costPer(r.spend, r.calificadas), fmt: money },
   { key: "qrate", label: "% calif.", get: (r) => ratio(r.calificadas, r.agendas), fmt: (n) => pct(n, 0) },
   { key: "meta_schedules", label: "Result. Meta", title: "Schedule que Meta recibió por API (calificadas, según Meta)", get: (r) => r.meta_schedules, fmt: num },
-  { key: "asistencias", label: "Asistencias", title: "Desde la hoja de llamadas", get: (r) => r.asistencias, fmt: num },
+  { key: "asistencias", label: "Asistencias", title: "Antes del 21-10 desde el archivo de llamadas; después desde GHL", get: (r) => r.asistencias, fmt: num },
   { key: "ofertas", label: "Ofertas", get: (r) => r.ofertas, fmt: num },
   { key: "cierres", label: "Cierres", get: (r) => r.cierres, fmt: num },
   { key: "vendido", label: "Vendido", get: (r) => r.vendido, fmt: money },
@@ -474,8 +474,8 @@ export function Dashboard({ email }: { email: string }) {
 
       <footer className="foot muted">
         <p>
-          Atribución: último clic de anuncio antes de agendar. Agendas y calificadas por fecha en que se agendó; asistencias por fecha de la llamada; cierres, vendido y cobrado por fecha de ingreso del cliente
-          (hoja “Llamadas”). “Sin anuncio identificado” = agendas de anuncios cuyo link todavía no trae <code>ad_id</code>: se sabe el conjunto, no el anuncio.
+          Atribución: último clic de anuncio antes de agendar. Agendas y calificadas por fecha en que se agendó; asistencias por fecha de la llamada; cierres, vendido y cobrado por fecha de cierre
+          (oportunidades Won del pipeline de Venta en GHL). “Sin anuncio identificado” = agendas de anuncios cuyo link todavía no trae <code>ad_id</code>: se sabe el conjunto, no el anuncio.
           “Anuncios sin ID en la URL” = vinieron de Meta con un link sin parámetros de anuncio ni de conjunto.
         </p>
         <p>
