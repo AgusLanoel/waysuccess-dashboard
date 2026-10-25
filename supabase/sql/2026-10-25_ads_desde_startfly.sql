@@ -1,0 +1,3 @@
+-- Pestaña Ads: v_funnel_events (asistencias, ofertas, cierres, vendido, cobrado) y cierres_core (tabla "Cierres de Ads")
+-- leen la hoja congelada hasta el corte (comercial_corte() = 2026-10-21) y GHL StartFly (com_calls_snap / com_opps_snap) desde el corte.
+-- Aplicado como migraciones funnel_events_startfly y cierres_ads_startfly (ver Supabase → migrations).
