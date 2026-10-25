@@ -1,0 +1,9 @@
+-- 25-10: TODOS los cierres.
+-- 1) v_com_ventas_archivo + refresh_comercial(): ventas de la hoja anteriores al corte que no están Won en StartFly
+--    entran a com_opps_snap como 'hoja-<fila>' (fecha = día de la llamada si coincide con el mes de ingreso; si no, el 1 del mes de ingreso).
+--    Emails/teléfonos repetidos más de 2 veces en la hoja (genéricos del closer) no se usan para emparejar.
+-- 2) v_com_opps: la fuente sale de la hoja cuando es histórico O el contacto no tiene anuncio pagado
+--    (replace 'WHEN o.es_historico THEN' -> 'WHEN o.es_historico OR NOT o.paid THEN').
+-- 3) GHL StartFly (edge function ghl-write, solo oportunidades): Fecha de cierre real en 20 ganadas importadas
+--    y oportunidad Won nueva para Maria Juarez (JessiK $10k, $8.000 / $6.800, Luca, 2026-10-20).
+-- 4) Pestaña Ads: Cierres/Vendido/Cobrado/ROAS = todas las ventas de la tabla "Cierres de Ads" (también sin anuncio identificado).

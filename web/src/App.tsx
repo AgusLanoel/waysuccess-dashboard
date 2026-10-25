@@ -232,6 +232,11 @@ export function Dashboard({ email }: { email: string }) {
   }, [rows, sort, onlyActive]);
 
   const total = useMemo(() => sumRows(rows), [rows]);
+  // Ventas de Ads: todas las de la tabla de cierres, también las que no tienen el anuncio identificado
+  const ventas = useMemo(
+    () => ({ n: cierres.length, vendido: cierres.reduce((t, x) => t + x.vendido, 0), cobrado: cierres.reduce((t, x) => t + x.cobrado, 0) }),
+    [cierres],
+  );
   const dates = daily.map((d) => d.d);
 
   const kpis: [string, string, string?][] = [
@@ -240,10 +245,10 @@ export function Dashboard({ email }: { email: string }) {
     ["Calificadas DFY", num(total.calificadas), `${money(costPer(total.spend, total.calificadas))} c/u`],
     ["Calificadas JessiK", num(total.calificadas_jessik ?? 0), "US$5k–20k/mes · downsell"],
     ["Asistencias", num(total.asistencias), `${pct(ratio(total.asistencias, total.calificadas), 0)} de calificadas`],
-    ["Cierres", num(total.cierres), `${pct(ratio(total.cierres, total.asistencias), 0)} de asistencias`],
-    ["Vendido", money(total.vendido)],
-    ["Cobrado", money(total.cobrado), undefined],
-    ["ROAS", total.spend > 0 ? `${(total.cobrado / total.spend).toFixed(2)}x` : "—", total.spend > 0 ? `Cobrado ÷ inversión · vendido ${(total.vendido / total.spend).toFixed(2)}x` : "Sin inversión en el período"],
+    ["Cierres", num(ventas.n), `${pct(ratio(ventas.n, total.asistencias), 0)} de asistencias · ${num(total.cierres)} con anuncio identificado`],
+    ["Vendido", money(ventas.vendido)],
+    ["Cobrado", money(ventas.cobrado), undefined],
+    ["ROAS", total.spend > 0 ? `${(ventas.cobrado / total.spend).toFixed(2)}x` : "—", total.spend > 0 ? `Cobrado ÷ inversión · vendido ${(ventas.vendido / total.spend).toFixed(2)}x` : "Sin inversión en el período"],
   ];
 
   return (
