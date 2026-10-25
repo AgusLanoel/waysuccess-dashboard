@@ -72,6 +72,7 @@ export interface FunnelRow {
   periodo: "actual" | "anterior";
   agendas: number;
   llamadas: number;
+  llamadas_pasadas: number;
   canceladas: number;
   asistencias: number;
   asistencias_calificadas: number;
@@ -86,7 +87,7 @@ export interface FunnelRow {
 
 export interface ComercialData {
   funnel: FunnelRow[];
-  closers: { closer: string; active: boolean; llamadas: number; asistencias: number; ofertas: number; cierres: number; vendido: number; cobrado: number; comision: number; en_seguimiento: number }[];
+  closers: { closer: string; active: boolean; llamadas: number; llamadas_pasadas: number; asistencias: number; ofertas: number; cierres: number; vendido: number; cobrado: number; comision: number; en_seguimiento: number }[];
   objeciones: { motivo: string; producto: string; n: number }[];
   seguimientos: { id: string; nombre: string | null; closer: string | null; producto: string; etapa: string; motivo: string | null; proximo_seguimiento: string | null; primera_llamada: string | null; historico: boolean; dias_en_etapa: number | null }[];
   calidad: { id: string; nombre: string | null; closer: string | null; etapa: string; historico: boolean; problema: string }[];

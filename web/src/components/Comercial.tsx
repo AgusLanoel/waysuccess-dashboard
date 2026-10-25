@@ -68,8 +68,8 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
           "Personas que reservaron una llamada en el período (por fecha de reserva), califiquen o no. DFY = facturan US$20k+/mes; JessiK = US$5k–20k; no califican = menos de US$5k o sin respuesta."],
         ["Llamadas programadas", num(t.llamadas), `${num(t.canceladas)} canceladas o reagendadas aparte`,
           "Citas cuya fecha de llamada cae en el período y no fueron canceladas. Puede incluir reservas de períodos anteriores."],
-        ["Show rate", pct(ratio(t.asistencias, t.llamadas), 0), `${num(t.asistencias)} asistencias de ${num(t.llamadas)} llamadas`,
-          "Asistencias ÷ llamadas programadas. Asistió = “¿Asistió?” en Sí, o la oportunidad pasó a P1, P3, P5, Reserva, 2da llamada o Cerrado."],
+        ["Show rate", pct(ratio(t.asistencias, t.llamadas_pasadas), 0), `${num(t.asistencias)} asistencias de ${num(t.llamadas_pasadas)} llamadas que ya pasaron · ${num(t.llamadas - t.llamadas_pasadas)} por venir`,
+          "Asistencias ÷ llamadas programadas que ya ocurrieron (las que todavía no pasaron no cuentan). Asistió = “¿Asistió?” en Sí, o la oportunidad pasó a P1, P3, P5, Reserva, 2da llamada o Cerrado."],
         ["Ofertas", num(t.ofertas), `${pct(ratio(t.ofertas, t.asistencias), 0)} de las asistencias`, "Asistencias con “¿Se realizó la oferta?” = Sí."],
         ["Cierres", num(t.cierres), t.cierres_nuevos + t.cierres_seguimiento ? `${num(t.cierres_nuevos)} nuevos · ${num(t.cierres_seguimiento)} de seguimiento` : undefined,
           "Ventas ganadas por fecha de cierre. Nuevo = la primera llamada fue en el mismo mes; de seguimiento = en un mes anterior."],
@@ -106,7 +106,7 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
             <thead>
               <tr>
                 <th className="name">Producto</th>
-                <th>Agendas</th><th>Llamadas</th><th>Asistencias</th><th>% asist.</th><th>Ofertas</th><th>Cierres</th><th>% cierre</th><th>Vendido</th><th>Cobrado</th><th>Ticket</th>
+                <th>Agendas</th><th>Llamadas</th><th>Asistencias</th><th title="Asistencias ÷ llamadas que ya pasaron">Show rate</th><th>Ofertas</th><th>Cierres</th><th>% cierre</th><th>Vendido</th><th>Cobrado</th><th>Ticket</th>
               </tr>
             </thead>
             <tbody>
@@ -119,7 +119,7 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
                     <td>{num(r.agendas)}</td>
                     <td>{num(r.llamadas)}</td>
                     <td>{num(r.asistencias)}</td>
-                    <td>{pct(ratio(r.asistencias, r.llamadas), 0)}</td>
+                    <td>{pct(ratio(r.asistencias, r.llamadas_pasadas), 0)}</td>
                     <td>{num(r.ofertas)}</td>
                     <td>{num(r.cierres)}</td>
                     <td>{pct(closeRate(r.cierres, r.asistencias), 0)}</td>
@@ -144,7 +144,7 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
             <thead>
               <tr>
                 <th className="name">Closer</th>
-                <th>Llamadas</th><th>Asistencias</th><th>% asist.</th><th>Ofertas</th><th>Cierres</th><th>% cierre</th><th>Vendido</th><th>Cobrado</th><th>Comisión</th><th>En seguimiento</th>
+                <th>Llamadas</th><th>Asistencias</th><th title="Asistencias ÷ llamadas que ya pasaron">Show rate</th><th>Ofertas</th><th>Cierres</th><th>% cierre</th><th>Vendido</th><th>Cobrado</th><th>Comisión</th><th>En seguimiento</th>
               </tr>
             </thead>
             <tbody>
@@ -153,7 +153,7 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
                   <td className="name">{c.closer}{!c.active && <span className="sub"> · inactivo</span>}</td>
                   <td>{num(c.llamadas)}</td>
                   <td>{num(c.asistencias)}</td>
-                  <td>{pct(ratio(c.asistencias, c.llamadas), 0)}</td>
+                  <td>{pct(ratio(c.asistencias, c.llamadas_pasadas), 0)}</td>
                   <td>{num(c.ofertas)}</td>
                   <td>{num(c.cierres)}</td>
                   <td>{pct(closeRate(c.cierres, c.asistencias), 0)}</td>
