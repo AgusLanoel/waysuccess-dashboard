@@ -57,3 +57,6 @@ where is_member();
 $function$;
 
 grant execute on function public.setter(date, date) to authenticated;
+
+-- Ajuste: el tiempo de contacto se mide desde que la oportunidad entró en "Agenda" (primer evento hacia Agenda; si no, la creación).
+-- Ver migración setter_tiempo_desde_agenda: v_setter_agendas.agendada = coalesce(min(evento a 'Agenda'), created_at).
