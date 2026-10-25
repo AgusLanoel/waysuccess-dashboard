@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase, type ComercialData, type FunnelRow } from "../lib/supabase";
 import { money, num, pct, ratio } from "../lib/format";
 import { VistaEmpresa } from "./VistaEmpresa";
+import { Setter } from "./Setter";
 
 const PRODUCTOS = ["DFY", "JessiK", "Sin definir"] as const;
 
@@ -167,6 +168,8 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
           </table>
         </div>
       </section>
+
+      <Setter from={from} to={to} reloadKey={reloadKey} />
 
       <section className="card table-card">
         <div className="table-head">

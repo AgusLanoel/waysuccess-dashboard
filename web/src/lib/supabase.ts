@@ -111,6 +111,15 @@ export interface EmpresaRow {
   comisiones: number;
 }
 
+export interface SetterData {
+  resumen: {
+    setter: string; agendas: number; contactadas: number; contactadas_antes: number; pendientes: number; sin_registro: number;
+    mediana_min: number | null; p90_min: number | null;
+    pasadas_contactadas: number; asist_contactadas: number; pasadas_no_contactadas: number; asist_no_contactadas: number;
+  }[];
+  pendientes: { id: string; contact_id: string | null; nombre: string | null; telefono: string | null; producto: string; etapa: string; setter: string; agendada: string; llamada: string; horas_esperando: number; llamada_pasada: boolean }[];
+}
+
 export interface MiDiaData {
   closer: string | null;
   hoy: string;
