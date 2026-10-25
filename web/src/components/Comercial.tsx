@@ -70,7 +70,7 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
         ["Vendido", money(t.vendido), delta(t.vendido, p.vendido)],
         ["Cobrado", money(t.cobrado), `${pct(ratio(t.cobrado, t.vendido), 0)} de lo vendido`],
         ["Cash pendiente", money(t.vendido - t.cobrado), "Vendido − cobrado de esas ventas"],
-        ["Ticket promedio", money(t.cierres ? t.vendido / t.cierres : null)],
+        ["Ticket promedio", money(t.cierres ? t.cobrado / t.cierres : null), `Cobrado ÷ cierres · contrato promedio ${money(t.cierres ? t.vendido / t.cierres : null)}`],
       ]
     : [];
 
@@ -119,7 +119,7 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
                     <td>{pct(closeRate(r.cierres, r.asistencias), 0)}</td>
                     <td>{money(r.vendido)}</td>
                     <td>{money(r.cobrado)}</td>
-                    <td>{money(r.cierres ? r.vendido / r.cierres : null)}</td>
+                    <td>{money(r.cierres ? r.cobrado / r.cierres : null)}</td>
                   </tr>
                 );
               })}
