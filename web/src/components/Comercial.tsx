@@ -66,7 +66,7 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
   const kpis: [string, string, string?, string?][] = t && p
     ? [
         ["Agendas brutas", num(t.agendas), `${num(dfy?.agendas)} DFY · ${num(jes?.agendas)} JessiK · ${num(sd?.agendas)} no califican · ${delta(t.agendas, p.agendas)}`,
-          "Personas que reservaron una llamada en el período (por fecha de reserva), califiquen o no. DFY = facturan US$20k+/mes; JessiK = US$5k–20k; no califican = menos de US$5k o sin respuesta."],
+          "Personas que reservaron una llamada en el período (por fecha de reserva), califiquen o no. DFY = facturan US$20k+/mes; JessiK = US$10k–20k (antes del 25-10, US$5k–20k); no califican = menos de US$10k o sin respuesta."],
         ["Llamadas programadas", num(t.llamadas), `${num(t.canceladas)} canceladas o reagendadas aparte`,
           "Citas cuya fecha de llamada cae en el período y no fueron canceladas. Puede incluir reservas de períodos anteriores."],
         ["Show rate", pct(ratio(t.asistencias, t.llamadas_pasadas), 0), `${num(t.asistencias)} asistencias de ${num(t.llamadas_pasadas)} llamadas que ya pasaron · ${num(t.llamadas - t.llamadas_pasadas)} por venir`,
