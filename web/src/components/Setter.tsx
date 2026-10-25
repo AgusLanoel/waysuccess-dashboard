@@ -1,17 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase, type SetterData } from "../lib/supabase";
-import { num, pct, ratio } from "../lib/format";
+import { num, pct, ratio, tiempo } from "../lib/format";
 
 const LOC = "fssMXOOdUdCpuTFkSTGc";
 const ghl = (contactId: string | null) => (contactId ? `https://app.gohighlevel.com/v2/location/${LOC}/contacts/detail/${contactId}` : undefined);
 const hora = (s: string) =>
   new Date(s).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-const tiempo = (min: number | null | undefined) => {
-  if (min == null) return "—";
-  if (min < 60) return `${Math.round(min)} min`;
-  const h = Math.floor(min / 60), m = Math.round(min % 60);
-  return h < 24 ? `${h} h ${m} min` : `${(min / 1440).toFixed(1)} días`;
-};
 
 // Trabajo de la setter: etapa "Agenda Contactada" del pipeline de Venta.
 export function Setter({ from, to, reloadKey }: { from: string; to: string; reloadKey: number }) {
@@ -48,7 +42,7 @@ export function Setter({ from, to, reloadKey }: { from: string; to: string; relo
         ["Contactadas antes de la llamada", pct(ratio(t.contactadas_antes, t.agendas), 0), `${num(t.contactadas_antes)} agendas`,
           "Contactadas antes de la hora de la llamada ÷ agendas del período."],
         ["Tiempo hasta el contacto", tiempo(t.mediana_min), `Mediana · el 90% en menos de ${tiempo(t.p90_min)}`,
-          "Desde que reservó hasta que la oportunidad pasó a “Agenda Contactada” (hora exacta de GHL). No cuenta las que nacieron ya movidas."],
+          "Desde que la oportunidad entró en “Agenda” hasta que pasó a “Agenda Contactada” (hora exacta de GHL). Se mide desde el 26-10."],
         ["Show rate contactadas", pct(ratio(t.asist_contactadas, t.pasadas_contactadas), 0),
           `${num(t.asist_contactadas)} de ${num(t.pasadas_contactadas)} · sin contactar ${pct(ratio(t.asist_no_contactadas, t.pasadas_no_contactadas), 0)} (${num(t.asist_no_contactadas)} de ${num(t.pasadas_no_contactadas)})`,
           "Asistencia de las llamadas que ya pasaron, separando las agendas contactadas de las que no."],
@@ -61,7 +55,7 @@ export function Setter({ from, to, reloadKey }: { from: string; to: string; relo
       <section className="card table-card" aria-busy={loading}>
         <div className="table-head">
           <h2 className="section-title">Setter · contacto de agendas</h2>
-          <span className="muted">Etapa “Agenda Contactada” del pipeline de Venta · agendas por fecha de reserva</span>
+          <span className="muted">Etapa “Agenda Contactada” del pipeline de Venta · agendas que entraron desde el 26-10, por fecha de entrada a Agenda</span>
         </div>
         <section className="kpis">
           {kpis.map(([label, value, sub, help]) => (

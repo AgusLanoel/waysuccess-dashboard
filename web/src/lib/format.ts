@@ -18,3 +18,11 @@ export const shortDate = (s: string) => {
   const [, m, d] = s.split("-");
   return `${Number(d)}/${Number(m)}`;
 };
+
+// Minutos → "45 min", "3 h 20 min" o "1.5 días"
+export const tiempo = (min: number | null | undefined) => {
+  if (min == null) return "—";
+  if (min < 60) return `${Math.round(min)} min`;
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h < 24 ? `${h} h ${m} min` : `${(min / 1440).toFixed(1)} días`;
+};

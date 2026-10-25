@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase, type ComercialData, type FunnelRow } from "../lib/supabase";
-import { money, num, pct, ratio } from "../lib/format";
+import { money, num, pct, ratio, tiempo } from "../lib/format";
 import { VistaEmpresa } from "./VistaEmpresa";
 import { Setter } from "./Setter";
 
@@ -71,6 +71,11 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
           "Citas cuya fecha de llamada cae en el período y no fueron canceladas. Puede incluir reservas de períodos anteriores."],
         ["Show rate", pct(ratio(t.asistencias, t.llamadas_pasadas), 0), `${num(t.asistencias)} asistencias de ${num(t.llamadas_pasadas)} llamadas que ya pasaron · ${num(t.llamadas - t.llamadas_pasadas)} por venir`,
           "Asistencias ÷ llamadas programadas que ya ocurrieron (las que todavía no pasaron no cuentan). Asistió = “¿Asistió?” en Sí, o la oportunidad pasó a P1, P3, P5, Reserva, 2da llamada o Cerrado."],
+        ["Tiempo de contacto", tiempo(data?.setter?.mediana_min),
+          data?.setter?.agendas
+            ? `${pct(ratio(data.setter.contactadas_antes, data.setter.agendas), 0)} contactadas antes de la llamada · ${num(data.setter.sin_contactar_ahora)} sin contactar ahora`
+            : `Se mide desde el ${data?.setter?.desde?.split("-").reverse().slice(0, 2).join("/") ?? "26/10"}`,
+          "Mediana desde que la oportunidad entra en “Agenda” hasta que la setter la pasa a “Agenda Contactada”. Detalle en la sección Setter."],
         ["Ofertas", num(t.ofertas), `${pct(ratio(t.ofertas, t.asistencias), 0)} de las asistencias`, "Asistencias con “¿Se realizó la oferta?” = Sí."],
         ["Cierres", num(t.cierres), t.cierres_nuevos + t.cierres_seguimiento ? `${num(t.cierres_nuevos)} nuevos · ${num(t.cierres_seguimiento)} de seguimiento` : undefined,
           "Ventas ganadas por fecha de cierre. Nuevo = la primera llamada fue en el mismo mes; de seguimiento = en un mes anterior."],

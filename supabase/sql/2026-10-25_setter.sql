@@ -60,3 +60,7 @@ grant execute on function public.setter(date, date) to authenticated;
 
 -- Ajuste: el tiempo de contacto se mide desde que la oportunidad entró en "Agenda" (primer evento hacia Agenda; si no, la creación).
 -- Ver migración setter_tiempo_desde_agenda: v_setter_agendas.agendada = coalesce(min(evento a 'Agenda'), created_at).
+
+-- 25-10: la medición arranca el 26-10 (settings.setter_desde): antes Laura movía a Llamada Confirmada recién al confirmar.
+-- setter() filtra agendas con entrada a Agenda >= setter_desde; comercial() devuelve 'setter' (fila Total + desde + sin_contactar_ahora)
+-- para la tarjeta "Tiempo de contacto" de los números principales. Migraciones: setter_desde_26_10_y_kpi_comercial, comercial_setter_coalesce.

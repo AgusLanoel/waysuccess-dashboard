@@ -91,6 +91,7 @@ export interface ComercialData {
   objeciones: { motivo: string; producto: string; n: number }[];
   seguimientos: { id: string; nombre: string | null; closer: string | null; producto: string; etapa: string; motivo: string | null; proximo_seguimiento: string | null; primera_llamada: string | null; historico: boolean; dias_en_etapa: number | null }[];
   calidad: { id: string; nombre: string | null; closer: string | null; etapa: string; historico: boolean; problema: string }[];
+  setter?: { desde: string; agendas: number; contactadas: number; contactadas_antes: number; mediana_min: number | null; p90_min: number | null; sin_contactar_ahora: number };
   cierres: { fecha_cierre: string; nombre: string | null; closer: string | null; producto: string; valor: number; cobrado: number; plan_pago: string | null; metodo_cobro: string | null; saldo_pendiente: number | null; primera_llamada: string | null; dias_a_cierre: number | null; de_ads: boolean; historico: boolean; fuente: string | null }[];
 }
 
