@@ -61,11 +61,11 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
   }, [data]);
   const maxObj = Math.max(1, ...objeciones.map((o) => o.total));
 
-  const dfy = f("DFY"), jes = f("JessiK"), sd = f("Sin definir");
+  const dfy = f("DFY"), jes = f("JessiK");
   // [título, valor, subtítulo, explicación al pasar el mouse]
   const kpis: [string, string, string?, string?][] = t && p
     ? [
-        ["Agendas brutas", num(t.agendas), `${num(dfy?.agendas)} DFY · ${num(jes?.agendas)} JessiK · ${num(sd?.agendas)} no califican · ${delta(t.agendas, p.agendas)}`,
+        ["Agendas calificadas", num(t.agendas), `${num(dfy?.agendas)} DFY · ${num(jes?.agendas)} JessiK · no canceladas · ${delta(t.agendas, p.agendas)}`,
           "Personas que reservaron una llamada en el período (por fecha de reserva), califiquen o no. DFY = facturan US$20k+/mes; JessiK = US$10k–20k (antes del 25-10, US$5k–20k); no califican = menos de US$10k o sin respuesta."],
         ["Llamadas programadas", num(t.llamadas), `${num(t.canceladas)} canceladas o reagendadas aparte`,
           "Citas cuya fecha de llamada cae en el período y no fueron canceladas. Puede incluir reservas de períodos anteriores."],

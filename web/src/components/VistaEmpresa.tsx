@@ -12,7 +12,7 @@ const PRODUCTOS: [string, string][] = [
 type Kind = "n" | "p" | "m";
 // Mismas filas y fórmulas que la "Vista empresa" del sheet comercial
 const FILAS: { label: string; kind: Kind; get: (r: EmpresaRow) => number | null }[] = [
-  { label: "Agendas brutas", kind: "n", get: (r) => r.agendas },
+  { label: "Agendas calificadas", kind: "n", get: (r) => r.agendas },
   { label: "Asistencias", kind: "n", get: (r) => r.asistencias },
   { label: "% Asistencia (÷ agendas)", kind: "p", get: (r) => ratio(r.asistencias, r.agendas) },
   { label: "Asistencias calificadas", kind: "n", get: (r) => r.asistencias_calificadas },
@@ -115,7 +115,7 @@ export function VistaEmpresa({ from, to, reloadKey }: { from: string; to: string
         </table>
       </div>
       <p className="muted small">
-        Comparación contra el período anterior del mismo largo. Comercial = todas las fuentes; Marketing = Ads + Orgánico. Fuente: campo “Fuente” del contacto en GHL
+        Agendas = solo calificadas (DFY o JessiK) y no canceladas. Comparación contra el período anterior del mismo largo. Comercial = todas las fuentes; Marketing = Ads + Orgánico. Fuente: campo “Fuente” del contacto en GHL
         (Referidos / Afiliados); si no, Ads cuando vino de un anuncio, si no Orgánico. Cierres = primera llamada en el
         mismo mes; en seguimiento = de meses anteriores. % Cierre = cierres ÷ asistencias. Ticket = cobrado ÷ cierres totales.
       </p>
