@@ -256,8 +256,10 @@ export function Dashboard({ email }: { email: string }) {
   const kpis: [string, string, string?][] = [
     ["Inversión", money(total.spend)],
     ["Agendas", num(total.agendas), `${money(costPer(total.spend, total.agendas))} c/u`],
+    // Calificadas = DFY + JessiK: todo menos "Menos de $5k" (hasta el 25-10) / "Menos de $10k" (desde el 25-10)
+    ["Agendas calificadas", num(total.calificadas + (total.calificadas_jessik ?? 0)), `${money(costPer(total.spend, total.calificadas + (total.calificadas_jessik ?? 0)))} por agenda calificada`],
     ["Calificadas DFY", num(total.calificadas), `${money(costPer(total.spend, total.calificadas))} c/u`],
-    ["Calificadas JessiK", num(total.calificadas_jessik ?? 0), "US$5k–20k/mes · downsell"],
+    ["Calificadas JessiK", num(total.calificadas_jessik ?? 0), `${money(costPer(total.spend, total.calificadas_jessik ?? 0))} c/u · US$10k–20k/mes (antes 5k–20k)`],
     ["Asistencias", num(total.asistencias), `${pct(ratio(total.asistencias, total.calificadas), 0)} de calificadas`],
     ["Cierres", num(ventas.n), `${pct(ratio(ventas.n, total.asistencias), 0)} de asistencias · ${num(total.cierres)} con anuncio identificado`],
     ["Vendido", money(ventas.vendido)],

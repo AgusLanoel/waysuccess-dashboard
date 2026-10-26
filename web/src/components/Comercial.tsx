@@ -91,6 +91,8 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
   const [oferta, setOferta] = useState<Oferta>("Todas");
   const [conHistorico, setConHistorico] = useState(false);
   const [abierto, setAbierto] = useState<string | null>(null);
+  // MRR/ARR: solo owner/finanzas (la función devuelve null al resto)
+  const [mrr, setMrr] = useState<{ mrr: number; arr: number; clientes: number; mrr_nuevo: number; clientes_nuevos: number } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -101,6 +103,9 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
       if (error) setErr(error.message);
       setData((data as ComercialData) ?? null);
       setLoading(false);
+    });
+    supabase.rpc("mrr", { p_from: from, p_to: to }).then(({ data }) => {
+      if (alive) setMrr((data as typeof mrr) ?? null);
     });
     return () => {
       alive = false;
@@ -161,6 +166,13 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
         { label: "Cobrado", value: money(t.cobrado), sub: `${pct(ratio(t.cobrado, t.vendido), 0)} de lo vendido`, help: "Efectivo cobrado de las ventas cerradas en el período." },
         { label: "Cash pendiente", value: money(t.vendido - t.cobrado), sub: "Vendido − cobrado de esas ventas" },
         { label: "Ticket promedio", value: money(t.cierres ? t.cobrado / t.cierres : null), sub: `Contrato promedio ${money(t.cierres ? t.vendido / t.cierres : null)}` },
+        ...(mrr
+          ? [
+              { label: "MRR", value: money(mrr.mrr), sub: `${num(mrr.clientes)} clientes mes a mes · +${money(mrr.mrr_nuevo)} nuevo en el período`,
+                help: "Suma de “Pago mensual (MRR)” de las oportunidades Won cerradas hasta el fin del período. Estos clientes no suman a Vendido." },
+              { label: "ARR", value: money(mrr.arr), sub: "MRR × 12", help: "Ingreso recurrente anualizado." },
+            ]
+          : []),
       ]
     : [];
 
