@@ -12,3 +12,5 @@
 -- Clientes MRR (JessiK mes a mes): vendido 0, cobrado = lo cobrado acumulado.
 
 -- 2026-10-26 ads_show_rate(p_from,p_to): asistencias / llamadas Ads DFY+JessiK no canceladas con inicio < now() (por fecha de llamada). Migración ads_show_rate.
+
+-- 2026-10-26 refresh_comercial: asistencia por etapa cruzando persona (email/tel): P1/P3/P5/Reserva/2da/Cerrado/Won o No Califica movida después de la llamada -> última llamada pasada de la persona = asistió (desde 2026-10-01).

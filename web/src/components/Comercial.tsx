@@ -164,7 +164,9 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
           help: "Ventas ganadas por fecha de cierre. Nuevo = primera llamada en el mismo mes; de seguimiento = de un mes anterior." },
         { label: "Vendido", value: money(t.vendido), sub: delta(t.vendido, p.vendido), help: "Valor de los contratos cerrados en el período." },
         { label: "Cobrado", value: money(t.cobrado), sub: `${pct(ratio(t.cobrado, t.vendido), 0)} de lo vendido`, help: "Efectivo cobrado de las ventas cerradas en el período." },
-        { label: "Cash pendiente", value: money(t.vendido - t.cobrado), sub: "Vendido − cobrado de esas ventas" },
+        // Clientes MRR (vendido 0) no restan: solo contratos con valor
+        { label: "Cash pendiente", value: money((data?.cierres ?? []).filter((x) => x.valor > 0).reduce((s, x) => s + Math.max(0, x.valor - x.cobrado), 0)),
+          sub: "Vendido − cobrado de esas ventas (sin clientes MRR)" },
         { label: "Ticket promedio", value: money(t.cierres ? t.cobrado / t.cierres : null), sub: `Contrato promedio ${money(t.cierres ? t.vendido / t.cierres : null)}` },
         ...(mrr
           ? [
