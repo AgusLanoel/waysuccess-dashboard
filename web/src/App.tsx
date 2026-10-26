@@ -166,6 +166,8 @@ export function Dashboard({ email }: { email: string }) {
   const [reloadKey, setReloadKey] = useState(0);
   // Ads (inversión, anuncios, ROAS) solo para rol owner; la base también lo bloquea.
   const [role, setRole] = useState<string | null>(null);
+  // Show rate de Ads: solo llamadas que ya ocurrieron (las agendadas a futuro no cuentan)
+  const [show, setShow] = useState<{ pasadas: number; asistencias: number; por_venir: number } | null>(null);
   const [tab, setTab] = useState<"comercial" | "midia" | "ads">("comercial");
   const isOwner = role === "owner";
   const esCloser = role === "closer";
@@ -218,9 +220,11 @@ export function Dashboard({ email }: { email: string }) {
       supabase.rpc("report_daily", { p_from: from, p_to: to }),
       supabase.rpc("sync_status"),
       supabase.rpc("cierres", { p_from: from, p_to: to }),
-    ]).then(([r, d, s, c]) => {
+      supabase.rpc("ads_show_rate", { p_from: from, p_to: to }),
+    ]).then(([r, d, s, c, sr]) => {
       if (!alive) return;
       const e = r.error ?? d.error ?? s.error ?? c.error;
+      setShow((sr.data as typeof show) ?? null);
       if (e) setErr(e.message);
       setRows(((r.data ?? []) as ReportRow[]).map((x) => ({ ...x, spend: Number(x.spend), vendido: Number(x.vendido), cobrado: Number(x.cobrado) })));
       setDaily(((d.data ?? []) as DailyRow[]).map((x) => ({ ...x, spend: Number(x.spend), cobrado: Number(x.cobrado) })));
@@ -260,7 +264,9 @@ export function Dashboard({ email }: { email: string }) {
     ["Agendas calificadas", num(total.calificadas + (total.calificadas_jessik ?? 0)), `${money(costPer(total.spend, total.calificadas + (total.calificadas_jessik ?? 0)))} por agenda calificada`],
     ["Calificadas DFY", num(total.calificadas), `${money(costPer(total.spend, total.calificadas))} c/u`],
     ["Calificadas JessiK", num(total.calificadas_jessik ?? 0), `${money(costPer(total.spend, total.calificadas_jessik ?? 0))} c/u · US$10k–20k/mes (antes 5k–20k)`],
-    ["Asistencias", num(total.asistencias), `${pct(ratio(total.asistencias, total.calificadas), 0)} de calificadas`],
+    ["Asistencias", num(total.asistencias), show
+      ? `Show rate ${pct(ratio(show.asistencias, show.pasadas), 0)} · ${num(show.asistencias)} de ${num(show.pasadas)} llamadas que ya pasaron · ${num(show.por_venir)} por venir`
+      : undefined],
     ["Cierres", num(ventas.n), `${pct(ratio(ventas.n, total.asistencias), 0)} de asistencias · ${num(total.cierres)} con anuncio identificado`],
     ["Vendido", money(ventas.vendido)],
     ["Cobrado", money(ventas.cobrado), undefined],

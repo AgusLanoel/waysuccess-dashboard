@@ -10,3 +10,5 @@
 -- public.mrr(p_from, p_to) jsonb {mrr, arr, clientes, mrr_nuevo, clientes_nuevos}; solo ve_todo() (owner/finanzas).
 -- MRR = suma del campo en Won del pipeline kW8p con Fecha de cierre <= p_to; ARR = MRR*12. Migración mrr_resumen.
 -- Clientes MRR (JessiK mes a mes): vendido 0, cobrado = lo cobrado acumulado.
+
+-- 2026-10-26 ads_show_rate(p_from,p_to): asistencias / llamadas Ads DFY+JessiK no canceladas con inicio < now() (por fecha de llamada). Migración ads_show_rate.
