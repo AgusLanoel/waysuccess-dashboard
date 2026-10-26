@@ -57,7 +57,7 @@ export function MiDia({ esCloser, reloadKey }: { esCloser: boolean; reloadKey: n
               <td className="name">{ghl(l.contact_id) ? <a href={ghl(l.contact_id)} target="_blank" rel="noreferrer">{l.nombre ?? "—"}</a> : l.nombre ?? "—"}</td>
               <td>{l.telefono ?? "—"}</td>
               {verCloser && <td>{l.closer}</td>}
-              <td>{l.producto}</td>
+              <td><span className={`chip ${l.producto === "DFY" ? "chip-dfy" : l.producto === "JessiK" ? "chip-jessik" : "chip-none"}`}>{l.producto}</span></td>
               <td>{l.ingresos ?? "—"}</td>
               <td className="name">{l.negocio ?? "—"}</td>
               <td>{l.etapa ?? "—"}</td>
@@ -74,7 +74,7 @@ export function MiDia({ esCloser, reloadKey }: { esCloser: boolean; reloadKey: n
   return (
     <>
       {err && <p className="error">Error: {err}</p>}
-      <section className="kpis" aria-busy={loading}>
+      <section className="kpis kpi-group tone-embudo" aria-busy={loading}>
         <div className="kpi"><div className="kpi-label">Llamadas hoy</div><div className="kpi-value">{llamadasHoy.length}</div><div className="kpi-sub">{llamadasManana.length} mañana</div></div>
         <div className="kpi"><div className="kpi-label">Seguimientos vencidos</div><div className="kpi-value">{vencidos.length}</div><div className="kpi-sub">{proximos.length} en los próximos 7 días</div></div>
         <div className="kpi"><div className="kpi-label">Pendientes en GHL</div><div className="kpi-value">{nPend}</div><div className="kpi-sub">Datos que faltan completar</div></div>
@@ -94,19 +94,19 @@ export function MiDia({ esCloser, reloadKey }: { esCloser: boolean; reloadKey: n
         </label>
       </div>
 
-      <section className="card table-card">
-        <div className="table-head"><h2 className="section-title">Llamadas de hoy · {llamadasHoy.length}</h2><span className="muted">Tocá el nombre para abrir el contacto en GHL</span></div>
+      <section className="card table-card tone-embudo">
+        <div className="table-head"><h2 className="section-title"><i className="dot" />Llamadas de hoy · {llamadasHoy.length}</h2><span className="muted">Tocá el nombre para abrir el contacto en GHL</span></div>
         {tablaLlamadas(llamadasHoy, "No hay llamadas hoy.")}
       </section>
 
-      <section className="card table-card">
-        <div className="table-head"><h2 className="section-title">Mañana · {llamadasManana.length}</h2></div>
+      <section className="card table-card tone-embudo">
+        <div className="table-head"><h2 className="section-title"><i className="dot" />Mañana · {llamadasManana.length}</h2></div>
         {tablaLlamadas(llamadasManana, "No hay llamadas mañana.")}
       </section>
 
-      <section className="card table-card">
+      <section className="card table-card tone-alerta">
         <div className="table-head">
-          <h2 className="section-title">Seguimientos · {vencidos.length} vencidos, {proximos.length} esta semana</h2>
+          <h2 className="section-title"><i className="dot" />Seguimientos · {vencidos.length} vencidos, {proximos.length} esta semana</h2>
           <span className="muted">P1, P3, P5, Reserva y 2da llamada. Al contactarlo, cargá la nueva “Fecha próximo seguimiento”</span>
         </div>
         <div className="table-wrap">
@@ -122,7 +122,7 @@ export function MiDia({ esCloser, reloadKey }: { esCloser: boolean; reloadKey: n
                   <td>{s.telefono ?? "—"}</td>
                   {verCloser && <td>{s.closer ?? "—"}</td>}
                   <td>{s.etapa}</td>
-                  <td>{s.producto}</td>
+                  <td><span className={`chip ${s.producto === "DFY" ? "chip-dfy" : s.producto === "JessiK" ? "chip-jessik" : "chip-none"}`}>{s.producto}</span></td>
                   <td>{s.motivo ?? "—"}</td>
                 </tr>
               ))}
@@ -134,8 +134,8 @@ export function MiDia({ esCloser, reloadKey }: { esCloser: boolean; reloadKey: n
         </div>
       </section>
 
-      <section className="card table-card">
-        <div className="table-head"><h2 className="section-title">Pendientes de completar en GHL · {nPend}</h2><span className="muted">Tocá un pendiente para ver los nombres</span></div>
+      <section className="card table-card tone-alerta">
+        <div className="table-head"><h2 className="section-title"><i className="dot" />Pendientes de completar en GHL · {nPend}</h2><span className="muted">Tocá un pendiente para ver los nombres</span></div>
         {pendientes.length === 0 && <p className="empty">Todo completo.</p>}
         <ul className="issues">
           {pendientes.map(([problema, items]) => (

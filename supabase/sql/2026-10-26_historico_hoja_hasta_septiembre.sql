@@ -49,3 +49,6 @@ alter table com_agendas_snap add column if not exists agenda_key text;
 -- v_com_calls_archivo CASE agrega  WHEN s.producto = '30k' THEN 'DFY'  WHEN s.producto ~~* 'jessik' THEN 'JessiK'  al principio.
 -- Verificado 26-10 hasta 30-09: agendas 256 (DFY 239), asistencias 164, calificadas 161, ofertas 137 = sheet.
 select refresh_comercial();
+
+-- 26-10 (rediseño Comercial): comercial() calidad devuelve también o.producto (filtro por oferta en "Detalle por oferta").
+-- Aplicado con replace('select o.id, o.nombre, o.closer, o.etapa, o.historico, x.problema' → '..., o.historico, o.producto, x.problema').
