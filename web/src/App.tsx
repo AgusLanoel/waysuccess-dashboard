@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, type CierreRow, type DailyRow, type Level, type ReportRow, type SyncRow } from "./lib/supabase";
-import { addDays, costPer, iso, money, money0, num, pct, ratio } from "./lib/format";
+import { HISTORICO_DESDE, addDays, costPer, iso, money, money0, num, pct, ratio } from "./lib/format";
 import { DailyChart } from "./components/Charts";
 import { Comercial } from "./components/Comercial";
 import { MiDia } from "./components/MiDia";
@@ -52,7 +52,7 @@ function Login() {
   );
 }
 
-type Preset = "today" | "yesterday" | "7" | "14" | "30" | "month" | "lastmonth" | "custom";
+type Preset = "today" | "yesterday" | "7" | "14" | "30" | "month" | "lastmonth" | "all" | "custom";
 const PRESETS: [Preset, string][] = [
   ["today", "Hoy"],
   ["yesterday", "Ayer"],
@@ -61,6 +61,7 @@ const PRESETS: [Preset, string][] = [
   ["30", "30 días"],
   ["month", "Este mes"],
   ["lastmonth", "Mes pasado"],
+  ["all", "Histórico"],
   ["custom", "Personalizado"],
 ];
 
@@ -73,6 +74,8 @@ function rangeFor(p: Preset): [string, string] {
       return [iso(addDays(t, -1)), iso(addDays(t, -1))];
     case "month":
       return [iso(new Date(t.getFullYear(), t.getMonth(), 1)), iso(t)];
+    case "all":
+      return [HISTORICO_DESDE, iso(t)];
     case "lastmonth":
       return [iso(new Date(t.getFullYear(), t.getMonth() - 1, 1)), iso(new Date(t.getFullYear(), t.getMonth(), 0))];
     default:

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase, type EmpresaRow } from "../lib/supabase";
-import { money, num, pct, ratio } from "../lib/format";
+import { HISTORICO_DESDE, money, num, pct, ratio } from "../lib/format";
 
 const GRUPOS = ["Comercial", "Marketing", "Ads", "Orgánico", "Referidos", "Afiliados"] as const;
 const PRODUCTOS: [string, string][] = [
@@ -66,6 +66,8 @@ export function VistaEmpresa({ from, to, reloadKey }: { from: string; to: string
     };
   }, [from, to, producto, reloadKey]);
 
+  // En "Histórico" no hay período anterior con qué comparar
+  const compara = from !== HISTORICO_DESDE;
   const get = (g: string, periodo: string) => rows.find((r) => r.grupo === g && r.periodo === periodo);
 
   return (
@@ -87,7 +89,7 @@ export function VistaEmpresa({ from, to, reloadKey }: { from: string; to: string
             <tr>
               <th className="name">Métrica</th>
               {GRUPOS.map((g) => (
-                <th key={g} colSpan={2} className={`grp grp-${g === "Orgánico" ? "organico" : g.toLowerCase()}`}>
+                <th key={g} colSpan={compara ? 2 : 1} className={`grp grp-${g === "Orgánico" ? "organico" : g.toLowerCase()}`}>
                   {g}
                 </th>
               ))}
@@ -104,7 +106,7 @@ export function VistaEmpresa({ from, to, reloadKey }: { from: string; to: string
                   const d = vs(f.kind, va, b ? f.get(b) : null);
                   return [
                     <td key={`${g}-v`}>{fmt(f.kind, va)}</td>,
-                    <td key={`${g}-d`} className={`vs ${d.cls}`}>{d.txt}</td>,
+                    compara && <td key={`${g}-d`} className={`vs ${d.cls}`}>{d.txt}</td>,
                   ];
                 })}
               </tr>

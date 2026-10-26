@@ -26,3 +26,6 @@ export const tiempo = (min: number | null | undefined) => {
   const h = Math.floor(min / 60), m = Math.round(min % 60);
   return h < 24 ? `${h} h ${m} min` : `${(min / 1440).toFixed(1)} días`;
 };
+
+// Primer dato comercial (archivo de llamadas, nov-2025): inicio del botón "Histórico"
+export const HISTORICO_DESDE = "2025-11-01";
