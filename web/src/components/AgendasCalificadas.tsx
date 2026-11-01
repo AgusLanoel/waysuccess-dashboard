@@ -49,6 +49,7 @@ export function AgendasCalificadas({ from, to, reloadKey }: { from: string; to: 
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setRows([]); // no dejar la lista del período anterior mientras carga el nuevo
     supabase.rpc("agendas_calificadas", { p_from: from, p_to: to }).then(({ data, error }) => {
       if (!alive) return;
       setErr(error?.message ?? null);
@@ -93,9 +94,9 @@ export function AgendasCalificadas({ from, to, reloadKey }: { from: string; to: 
                 ))}
               </tr>
             ))}
-            {!loading && visible.length === 0 && (
+            {visible.length === 0 && (
               <tr>
-                <td colSpan={COLS.length} className="empty">Sin agendas calificadas en este período.</td>
+                <td colSpan={COLS.length} className="empty">{loading ? "Cargando…" : "Sin agendas calificadas en este período."}</td>
               </tr>
             )}
           </tbody>

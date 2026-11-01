@@ -15,12 +15,18 @@ returns table(
 )
 language sql stable security definer set search_path to ''
 as $$
+  -- 01-11 (2): contact_attribution_for(ids) en vez de la vista completa (la vista tardaba ~8 s → timeout)
   with calif as (
     select a.contact_id, a.date_added, a.start_time, a.status, c.custom_fields cf,
            row_number() over (partition by a.contact_id order by a.date_added) n
     from public.ghl_appointments a join public.ghl_contacts c on c.id = a.contact_id
     where not a.deleted and public.is_10k_plus(c.custom_fields)
-  )
+  ),
+  sel as (
+    select * from calif q
+    where q.n = 1 and (q.date_added at time zone 'America/Los_Angeles')::date between p_from and p_to
+  ),
+  att as (select * from public.contact_attribution_for((select array_agg(contact_id) from sel)))
   select q.contact_id, q.date_added, q.start_time, q.status,
          case when public.is_jessik(q.cf) then 'JessiK' else 'DFY' end,
          nullif(c.full_name, ''),
@@ -33,12 +39,11 @@ as $$
          coalesce(q.cf->>'q2QBhRbgfq64l9PfLCEZ', ca.utm_campaign),
          coalesce(q.cf->>'OVAkHPPCuyxnRql6wKr1', ca.utm_content),
          nullif(c.timezone, '')
-  from calif q
+  from sel q
   join public.ghl_contacts c on c.id = q.contact_id
-  join public.v_contact_attribution ca on ca.contact_id = q.contact_id and ca.is_paid and not ca.other_account
-  where q.n = 1
-    and (q.date_added at time zone 'America/Los_Angeles')::date between p_from and p_to
-    and public.is_owner()
+  join att ca on ca.contact_id = q.contact_id and ca.is_paid and not ca.other_account
+  where public.is_owner()
+    and not public.es_organico_utm(c.custom_fields) -- orgánico nunca (contact_attribution_for no lo filtra)
   order by q.date_added desc;
 $$;
 
