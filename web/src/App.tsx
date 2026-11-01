@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { supabase, type CierreRow, type DailyRow, type Level, type ReportRow, type SyncRow } from "./lib/supabase";
-import { HISTORICO_DESDE, addDays, costPer, iso, money, money0, num, pct, ratio } from "./lib/format";
-import { DailyChart } from "./components/Charts";
+import { supabase, type CierreRow, type Level, type ReportRow, type SyncRow } from "./lib/supabase";
+import { HISTORICO_DESDE, addDays, costPer, iso, money, num, pct, ratio } from "./lib/format";
+import { AgendasCalificadas } from "./components/AgendasCalificadas";
 import { Comercial } from "./components/Comercial";
 import { MiDia } from "./components/MiDia";
 
@@ -154,7 +154,6 @@ export function Dashboard({ email }: { email: string }) {
   const [[from, to], setRange] = useState(rangeFor("7"));
   const [level, setLevel] = useState<Level>("ad");
   const [rows, setRows] = useState<ReportRow[]>([]);
-  const [daily, setDaily] = useState<DailyRow[]>([]);
   const [sync, setSync] = useState<SyncRow[]>([]);
   const [cierres, setCierres] = useState<CierreRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,17 +216,15 @@ export function Dashboard({ email }: { email: string }) {
     setErr(null);
     Promise.all([
       supabase.rpc("report", { p_from: from, p_to: to, p_level: level }),
-      supabase.rpc("report_daily", { p_from: from, p_to: to }),
       supabase.rpc("sync_status"),
       supabase.rpc("cierres", { p_from: from, p_to: to }),
       supabase.rpc("ads_show_rate", { p_from: from, p_to: to }),
-    ]).then(([r, d, s, c, sr]) => {
+    ]).then(([r, s, c, sr]) => {
       if (!alive) return;
-      const e = r.error ?? d.error ?? s.error ?? c.error;
+      const e = r.error ?? s.error ?? c.error;
       setShow((sr.data as typeof show) ?? null);
       if (e) setErr(e.message);
       setRows(((r.data ?? []) as ReportRow[]).map((x) => ({ ...x, spend: Number(x.spend), vendido: Number(x.vendido), cobrado: Number(x.cobrado) })));
-      setDaily(((d.data ?? []) as DailyRow[]).map((x) => ({ ...x, spend: Number(x.spend), cobrado: Number(x.cobrado) })));
       setSync((s.data ?? []) as SyncRow[]);
       setCierres(((c.data ?? []) as CierreRow[]).map((x) => ({ ...x, vendido: Number(x.vendido), cobrado: Number(x.cobrado) })));
       setLoading(false);
@@ -255,7 +252,6 @@ export function Dashboard({ email }: { email: string }) {
     () => ({ n: cierres.length, vendido: cierres.reduce((t, x) => t + x.vendido, 0), cobrado: cierres.reduce((t, x) => t + x.cobrado, 0) }),
     [cierres],
   );
-  const dates = daily.map((d) => d.d);
 
   const kpis: [string, string, string?][] = [
     ["Inversión", money(total.spend)],
@@ -336,19 +332,8 @@ export function Dashboard({ email }: { email: string }) {
         ))}
       </section>
 
-      <section className="charts">
-        <DailyChart title="Inversión por día" kind="bar" dates={dates} fmt={money0} series={[{ key: "spend", label: "Inversión", color: "var(--series-1)", values: daily.map((d) => d.spend) }]} />
-        <DailyChart
-          title="Agendas por día"
-          kind="line"
-          dates={dates}
-          fmt={(n) => num(n)}
-          series={[
-            { key: "agendas", label: "Agendas", color: "var(--series-1)", values: daily.map((d) => d.agendas) },
-            { key: "calificadas", label: "Calificadas", color: "var(--series-2)", values: daily.map((d) => d.calificadas) },
-          ]}
-        />
-      </section>
+      {/* 01-11-2026: la lista de agendas calificadas reemplaza los gráficos de inversión/agendas por día */}
+      <AgendasCalificadas from={from} to={to} reloadKey={reloadKey} />
 
       <section className="card table-card">
         <div className="table-head">

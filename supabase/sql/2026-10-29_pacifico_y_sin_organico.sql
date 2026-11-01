@@ -1,0 +1,10 @@
+-- Dueño 29-10: el dashboard tiene que cuadrar con Meta y lo orgánico no entra nunca (por UTMs).
+-- Aplicado como migración "dashboard_pacifico_y_sin_organico":
+-- 1) v_funnel_events: agenda / calificada / calificada_jessik ahora se fechan en America/Los_Angeles
+--    (zona de la cuenta Meta 1327704949277228). Antes America/New_York → 28-10 daba 10 vs 8 de Meta.
+-- 2) es_organico_utm(cf): utm_medium social/bio/organico/reels, utm_content link_in_bio,
+--    o utm_source instagram/ig/tiktok/youtube sin medium pago.
+-- 3) v_contact_attribution.is_paid = (regla anterior) AND NOT es_organico_utm(UTMs propias del contacto),
+--    así un orgánico no hereda atribución de pago por email/teléfono de otro contacto.
+-- Verificado: report 28-10 (Pacífico) = 8 calificadas (4 DFY + 4 JessiK) = 8 Schedule en Meta.
+-- Definición completa: ver la migración en Supabase (list_migrations).

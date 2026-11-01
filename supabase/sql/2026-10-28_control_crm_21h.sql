@@ -1,0 +1,9 @@
+-- Control diario 21 h (dueño 28-10): qué falta actualizar en el CRM de StartFly.
+-- select public.control_crm();  -> texto listo para el grupo de WhatsApp de Comercial.
+-- Closers: oportunidad abierta en Agenda/Agenda Contactada/Llamada Confirmada/2da Llamada/Triaje cuya última llamada
+--   (no cancelada, terminó hace >1 h, desde comercial_corte()) es posterior al último cambio de etapa y sin cita futura.
+-- Setter: agenda calificada (DFY/JessiK) con llamada válida, agendada desde settings.setter_desde y hace >1 h,
+--   que sigue en Agenda/Triaje sin pasar por Agenda Contactada / Llamada Confirmada.
+-- Si nadie debe nada -> mensaje de felicitación. Closers activos al día salen con ✅.
+-- Definición completa aplicada en vivo: migración control_crm_21h + ajustes (VOLATILE, ✅ por closer, "Setter (Laura)").
+-- Ver: select pg_get_functiondef('public.control_crm(timestamptz)'::regprocedure);

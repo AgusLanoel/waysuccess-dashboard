@@ -230,3 +230,16 @@ td.money { font-weight: 600; }
 .of-dfy .bar, .of-jessik .bar { background: var(--tone); }
 .of-dfy .bar-track, .of-jessik .bar-track { background: var(--tone-soft); }
 .issue-n { color: var(--alerta); }
+
+/* 01-11-2026: lista de agendas calificadas (Ads) */
+.agendas-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.count-pill { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+.agendas-card .small { font-size: 12px; margin: 0; }
+.agendas-card .search { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; width: 220px; max-width: 100%; }
+.agendas-wrap { max-height: 420px; overflow: auto; }
+table.agendas th, table.agendas td { text-align: left; cursor: default; }
+table.agendas td.long { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+table.agendas th.name, table.agendas td.name { min-width: 160px; font-weight: 600; }
+.tipo { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
+.t-dfy { color: #30a46c; }
+.t-jessik { color: #3b82f6; }

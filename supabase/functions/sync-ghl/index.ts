@@ -55,6 +55,11 @@ function contactRow(c: any) {
     date_added: c.dateAdded ?? null,
     email_norm: normEmail(c.email),
     phone_norm: normPhone(c.phone),
+    // 01-11-2026: para la lista de agendas calificadas del día ('' = GHL no lo tiene, no se vuelve a pedir)
+    full_name: [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || c.contactName || c.name || "",
+    email: c.email ?? "",
+    phone: c.phone ?? "",
+    timezone: c.timezone ?? "",
     source: c.source ?? null,
     tags: c.tags ?? [],
     custom_fields: Object.fromEntries((c.customFields ?? []).map((x: any) => [x.id, x.value])),
@@ -152,7 +157,7 @@ Deno.serve(async (req) => {
     if (body.contacts !== "all") {
       const have = new Set<string>();
       for (let i = 0; i < toFetch.length; i += 300) {
-        const { data } = await sb.from("ghl_contacts").select("id").in("id", toFetch.slice(i, i + 300));
+        const { data } = await sb.from("ghl_contacts").select("id").not("full_name", "is", null).in("id", toFetch.slice(i, i + 300));
         for (const r of data ?? []) have.add(r.id);
       }
       // Siempre refresca los contactos de citas creadas en los últimos 3 días

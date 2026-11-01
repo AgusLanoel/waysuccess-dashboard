@@ -1,0 +1,6 @@
+-- Dueño 29-10: "corrige de una vez" la diferencia dashboard vs Meta. Migración "dashboard_calificada_10k_y_primera_agenda":
+-- * is_10k_plus(cf): respuesta de ingresos que empieza en $10k/$20k/$50k/$250k. "$5k a $20k" y "Menos..." ya no cuentan.
+-- * v_funnel_events: calificada / calificada_jessik = solo la PRIMERA agenda +$10k de cada persona (igual que CAPI, 1 evento por persona).
+-- Resultado 21–29-10 (Pacífico) dashboard vs Meta: 3/4, 3/3, 2/1, 5/6, 3/3, 9/9, 7/7, 6/8, 4/4.
+-- Lo que queda es atribución de Meta (día de impresión) y eventos duplicados enviados antes del arreglo de CAPI (29-10).
+-- Ajuste mismo día (migración dashboard_calificada_incluye_5k_20k_jessik): "$5k a $20k" vuelve a contar (era JessiK). 26–29-10 cuadra con Meta; 21–25 Meta tiene menos porque JessiK no se enviaba por CAPI.
