@@ -11,7 +11,7 @@ El código que corre está desplegado en Supabase (proyecto `iqiyhlcqnxwtdhmmrls
 | `ghl-scope-check` | Verifica permisos de GHL_PIT_TOKEN (lectura + escritura no-op) y lista los campos de la oportunidad | Manual |
 | `check-access` | Verifica que los tokens de Meta y GHL respondan | Manual |
 | `ghl-explore` | Exploración de la estructura de GHL | Manual |
-| `control-crm` | Bot de Telegram: aviso de cierre de día (`control_cierre_aviso()`) y detalle por persona al escribirle un nombre (`control_cierre_persona()`). Acciones: `enviar`, `ver`, `webhook`, `responder` | pg_cron 21:00 ART (`0 0 * * *` UTC) + webhook de Telegram (solo el chat del dueño) |
+| `control-crm` | Bot de Telegram: aviso de cierre de día (`control_cierre_aviso()`) y detalle por persona al escribirle un nombre (`control_cierre_persona()`). Acciones: `enviar`, `ver`, `webhook`, `responder` | pg_cron 21:00 ART (`0 0 * * *` UTC) + webhook de Telegram (miembros por invitación: `/invitar`, `/equipo`, `/quitar`) |
 | `check-attribution` | Desactivada (410) | — |
 
 Autenticación: todas excepto `sheet-ingest` exigen el header `x-sync-key`, que vive en Vault (`sync_key`) y solo se usa desde `private.call_fn()`. `sheet-ingest` exige `x-sheet-key` (Vault `sheet_key`).
