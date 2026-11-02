@@ -121,6 +121,13 @@ export interface SetterData {
   pendientes: { id: string; contact_id: string | null; nombre: string | null; telefono: string | null; producto: string; etapa: string; setter: string; agendada: string; llamada: string; horas_esperando: number; llamada_pasada: boolean }[];
 }
 
+export interface CierreDiaData {
+  generado: string;
+  ultima_sync: string | null;
+  texto_equipo: string;
+  items: { area: string; responsable: string; tipo: string; nombre: string; contact_id: string | null; opp_id: string | null; producto: string | null; etapa: string | null; detalle: string; referencia: string; es_de_hoy: boolean }[];
+}
+
 export interface MiDiaData {
   closer: string | null;
   hoy: string;

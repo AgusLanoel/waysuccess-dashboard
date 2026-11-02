@@ -5,6 +5,7 @@ import { HISTORICO_DESDE, addDays, costPer, iso, money, num, pct, ratio } from "
 import { AgendasCalificadas } from "./components/AgendasCalificadas";
 import { Comercial } from "./components/Comercial";
 import { MiDia } from "./components/MiDia";
+import { CierreDia } from "./components/CierreDia";
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -167,14 +168,14 @@ export function Dashboard({ email }: { email: string }) {
   const [role, setRole] = useState<string | null>(null);
   // Show rate de Ads: solo llamadas que ya ocurrieron (las agendadas a futuro no cuentan)
   const [show, setShow] = useState<{ pasadas: number; asistencias: number; por_venir: number } | null>(null);
-  const [tab, setTab] = useState<"comercial" | "midia" | "ads">("comercial");
+  const [tab, setTab] = useState<"comercial" | "midia" | "cierre" | "ads">(new URLSearchParams(location.search).get("tab") === "cierre" ? "cierre" : "comercial");
   const isOwner = role === "owner";
   const esCloser = role === "closer";
   // Closer: Mi día + sus números. Owner: además Ads (la base también lo bloquea para el resto).
-  const TABS: ["comercial" | "midia" | "ads", string][] = esCloser
+  const TABS: ["comercial" | "midia" | "cierre" | "ads", string][] = esCloser
     ? [["midia", "Mi día"], ["comercial", "Mis números"]]
     : isOwner
-      ? [["comercial", "Comercial"], ["midia", "Mi día"], ["ads", "Ads"]]
+      ? [["comercial", "Comercial"], ["midia", "Mi día"], ["cierre", "Cierre de día"], ["ads", "Ads"]]
       : [["comercial", "Comercial"], ["midia", "Mi día"]];
 
   useEffect(() => {
@@ -296,7 +297,7 @@ export function Dashboard({ email }: { email: string }) {
             ))}
           </div>
         )}
-        {tab !== "midia" && (
+        {tab !== "midia" && tab !== "cierre" && (
         <div className="seg" role="tablist" aria-label="Período">
           {PRESETS.map(([p, l]) => (
             <button key={p} className={preset === p ? "on" : ""} onClick={() => setPreset(p)}>
@@ -305,7 +306,7 @@ export function Dashboard({ email }: { email: string }) {
           ))}
         </div>
         )}
-        {tab !== "midia" && preset === "custom" && (
+        {tab !== "midia" && tab !== "cierre" && preset === "custom" && (
           <div className="dates">
             <input type="date" value={from} max={to} onChange={(e) => setRange([e.target.value, to])} />
             <span className="muted">a</span>
@@ -316,6 +317,8 @@ export function Dashboard({ email }: { email: string }) {
 
       {tab === "midia" ? (
         <MiDia esCloser={esCloser} reloadKey={reloadKey} />
+      ) : tab === "cierre" && isOwner ? (
+        <CierreDia reloadKey={reloadKey} />
       ) : tab === "comercial" || !isOwner ? (
         <Comercial from={from} to={to} reloadKey={reloadKey} />
       ) : (
