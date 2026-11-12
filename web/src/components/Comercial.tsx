@@ -318,7 +318,7 @@ export function Comercial({ from, to, reloadKey }: { from: string; to: string; r
 
       <section className="card table-card tone-alerta">
         <div className="table-head">
-          <h2 className="section-title"><i className="dot" />Seguimientos vencidos · {seguimientos.length}</h2>
+          <h2 className="section-title"><i className="dot" />Leads Sin Actualizar · {seguimientos.length}</h2>
           <span className="muted">En P1, P3, P5, Reserva o 2da llamada, con la fecha de próximo seguimiento vencida o sin cargar</span>
         </div>
         <div className="table-wrap">
