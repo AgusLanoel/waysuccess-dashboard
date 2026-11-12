@@ -301,7 +301,7 @@ export function Dashboard({ email }: { email: string }) {
             ))}
           </div>
         )}
-        {tab !== "midia" && tab !== "cierre" && (
+        {tab !== "midia" && tab !== "cierre" && tab !== "centro" && (
         <div className="seg" role="tablist" aria-label="Período">
           {PRESETS.map(([p, l]) => (
             <button key={p} className={preset === p ? "on" : ""} onClick={() => setPreset(p)}>
@@ -310,7 +310,7 @@ export function Dashboard({ email }: { email: string }) {
           ))}
         </div>
         )}
-        {tab !== "midia" && tab !== "cierre" && preset === "custom" && (
+        {tab !== "midia" && tab !== "cierre" && tab !== "centro" && preset === "custom" && (
           <div className="dates">
             <input type="date" value={from} max={to} onChange={(e) => setRange([e.target.value, to])} />
             <span className="muted">a</span>

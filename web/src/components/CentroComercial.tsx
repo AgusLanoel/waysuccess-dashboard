@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 // 11-11-2026 dueño: un solo lugar para lo comercial. Recursos (contratos, links de pago, scripts, entregables),
-// tareas del área, llamadas grabadas con Fathom (lo que se escribió en GHL) y alertas abiertas.
+// tareas del área y alertas abiertas. (12-11: bloque Fathom quitado; las llamadas se leen desde Drive con oferta-auto.)
 // Todos los miembros lo ven; solo los owners editan recursos y tareas (la base también lo exige).
 
 const LOC = "fssMXOOdUdCpuTFkSTGc";
@@ -12,64 +12,30 @@ const ESTADOS = ["Pendiente", "En curso", "Hecho", "Bloqueado"] as const;
 
 interface Recurso { id: number; categoria: string; titulo: string; url: string | null; nota: string | null; orden: number; activo: boolean; updated_by: string | null }
 interface Tarea { id: number; titulo: string; detalle: string | null; estado: string; responsable: string | null; orden: number; updated_at: string; updated_by: string | null }
-interface Llamada {
-  id: string; persona: string | null; lead_nombre: string | null; contact_id: string | null; inicio: string | null; share_url: string | null;
-  estado: string; error: string | null; proxima_llamada_acordada: boolean | null; proximo_seguimiento: string | null;
-  ia: { resultado?: string; etapa_sugerida?: string; motivo?: string; resumen_corto?: string; oferta_hecha?: boolean; asistio?: boolean } | null;
-}
 interface Alerta { id: number; tipo: string; persona: string | null; para: string | null; lead_nombre: string | null; contact_id: string | null; mensaje: string; creada_at: string; enviada_at: string | null }
 
 const fecha = (s: string | null) =>
   s ? new Date(s).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }) : "—";
-const ESTADO_LLAMADA: Record<string, string> = {
-  recibida: "Procesando", sin_lead: "Sin lead en GHL", procesada: "Leída, sin escribir en GHL", ghl_ok: "Oportunidad actualizada", error: "Error",
-};
 
 export function CentroComercial({ isOwner, reloadKey }: { isOwner: boolean; reloadKey: number }) {
   const [recursos, setRecursos] = useState<Recurso[]>([]);
   const [tareas, setTareas] = useState<Tarea[]>([]);
-  const [llamadas, setLlamadas] = useState<Llamada[]>([]);
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [editando, setEditando] = useState<Partial<Recurso> | null>(null);
   const [nuevaTarea, setNuevaTarea] = useState("");
   const [tick, setTick] = useState(0);
-  // Conectar Fathom: la clave de API va directo a la función (no se guarda); solo queda el secreto del webhook.
-  const [conectados, setConectados] = useState<{ persona: string; creado_at: string }[]>([]);
-  const [fPersona, setFPersona] = useState("Luca");
-  const [fClave, setFClave] = useState("");
-  const [fEstado, setFEstado] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.rpc("fathom_conectados").then(({ data }) => setConectados((data as { persona: string; creado_at: string }[]) ?? []));
-  }, [reloadKey, tick]);
-
-  async function conectarFathom() {
-    setFEstado("Conectando…");
-    const { data: s } = await supabase.auth.getSession();
-    const { data, error } = await supabase.functions.invoke("comercial-auto", {
-      body: { action: "registrar", persona: fPersona, api_key: fClave },
-      headers: { Authorization: `Bearer ${s.session?.access_token ?? ""}` },
-    });
-    setFClave("");
-    if (error || data?.error) return setFEstado(`No se pudo: ${data?.error ?? error?.message}`);
-    setFEstado(`Listo: las llamadas de ${fPersona} van a llegar solas.`);
-    setTick((x) => x + 1);
-  }
-
   useEffect(() => {
     let alive = true;
     Promise.all([
       supabase.from("com_recursos").select("*").eq("activo", true).order("orden"),
       supabase.from("com_tareas").select("*").order("orden"),
-      supabase.from("fathom_calls").select("id,persona,lead_nombre,contact_id,inicio,share_url,estado,error,proxima_llamada_acordada,proximo_seguimiento,ia").order("inicio", { ascending: false }).limit(30),
       supabase.from("com_alertas").select("*").is("resuelta_at", null).order("creada_at", { ascending: false }).limit(50),
-    ]).then(([r, t, l, a]) => {
+    ]).then(([r, t, a]) => {
       if (!alive) return;
-      setErr(r.error?.message ?? t.error?.message ?? l.error?.message ?? a.error?.message ?? null);
+      setErr(r.error?.message ?? t.error?.message ?? a.error?.message ?? null);
       setRecursos((r.data as Recurso[]) ?? []);
       setTareas((t.data as Tarea[]) ?? []);
-      setLlamadas((l.data as Llamada[]) ?? []);
       setAlertas((a.data as Alerta[]) ?? []);
     });
     return () => { alive = false; };
@@ -216,53 +182,6 @@ export function CentroComercial({ isOwner, reloadKey }: { isOwner: boolean; relo
         )}
       </section>
 
-      <section className="card table-card tone-ventas">
-        <div className="table-head">
-          <h2 className="section-title"><i className="dot" />Llamadas grabadas con Fathom · {llamadas.length}</h2>
-          <span className="muted">Al terminar cada llamada, la transcripción actualiza la oportunidad en GHL</span>
-        </div>
-        <div className="table-wrap">
-          <table className="cierres">
-            <thead><tr><th>Fecha</th><th>Closer</th><th className="name">Lead</th><th>Resultado</th><th>Próx. seguimiento</th><th>Estado</th><th>Grabación</th></tr></thead>
-            <tbody>
-              {llamadas.map((l) => (
-                <tr key={l.id}>
-                  <td>{fecha(l.inicio)}</td>
-                  <td>{l.persona ?? "—"}</td>
-                  <td className="name">
-                    {ghl(l.contact_id) ? <a href={ghl(l.contact_id)} target="_blank" rel="noreferrer">{l.lead_nombre ?? "—"}</a> : l.lead_nombre ?? "—"}
-                    {l.ia?.resumen_corto && <div className="muted cc-nota">{l.ia.resumen_corto}</div>}
-                  </td>
-                  <td>{l.ia?.etapa_sugerida ?? l.ia?.resultado ?? "—"}{l.ia?.motivo ? <div className="muted cc-nota">{l.ia.motivo}</div> : null}</td>
-                  <td className={l.proxima_llamada_acordada && !l.proximo_seguimiento ? "warn" : ""}>
-                    {l.proximo_seguimiento ? fecha(l.proximo_seguimiento) : l.proxima_llamada_acordada ? "Acordada sin fecha" : "—"}
-                  </td>
-                  <td className={l.estado === "error" || l.estado === "sin_lead" ? "warn" : ""} title={l.error ?? undefined}>{ESTADO_LLAMADA[l.estado] ?? l.estado}</td>
-                  <td>{l.share_url ? <a href={l.share_url} target="_blank" rel="noreferrer">Ver</a> : "—"}</td>
-                </tr>
-              ))}
-              {llamadas.length === 0 && (
-                <tr><td colSpan={7} className="empty">Todavía no llegó ninguna llamada. Aparecen acá apenas cada closer conecte su Fathom.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="cc-form">
-          <strong>Conectar Fathom</strong>
-          <span className="muted cc-nota">
-            Conectados: {conectados.length ? conectados.map((c) => c.persona).join(", ") : "nadie todavía"}.
-            En Fathom: Settings → API Access → Generate API key, y pegala acá. La clave no se guarda.
-          </span>
-          <div className="cc-row cc-fathom">
-            <select value={fPersona} onChange={(e) => setFPersona(e.target.value)}>
-              {["Luca", "Jenny", "Mileces", "Ale"].map((p) => <option key={p}>{p}</option>)}
-            </select>
-            <input type="password" placeholder="Clave de API de Fathom" value={fClave} onChange={(e) => setFClave(e.target.value)} autoComplete="off" />
-            <button className="primary" disabled={fClave.length < 10} onClick={conectarFathom}>Conectar</button>
-          </div>
-          {fEstado && <span className="muted cc-nota">{fEstado}</span>}
-        </div>
-      </section>
     </div>
   );
 }
