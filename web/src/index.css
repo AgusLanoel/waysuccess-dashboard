@@ -243,3 +243,21 @@ table.agendas th.name, table.agendas td.name { min-width: 160px; font-weight: 60
 .tipo { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
 .t-dfy { color: #30a46c; }
 .t-jessik { color: #3b82f6; }
+
+/* Centro comercial (11-11-2026) */
+.cc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; margin-bottom: 12px; }
+.cc-list { list-style: none; margin: 0; padding: 0; }
+.cc-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 8px 2px; border-top: 1px solid var(--border); }
+.cc-item:first-child { border-top: 0; }
+.cc-main { min-width: 0; overflow-wrap: anywhere; }
+.cc-nota { font-size: 12px; margin-top: 2px; }
+.cc-form { display: grid; gap: 6px; margin-top: 10px; }
+.cc-form input, .cc-inline { font: inherit; color: var(--text); border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 9px; min-width: 0; }
+.cc-inline { width: 120px; }
+.cc-row { grid-template-columns: 1fr auto; }
+.cc-actions { display: flex; gap: 8px; align-items: center; }
+.cc-danger { color: var(--critical); margin-left: auto; }
+.cc-wrap { display: grid; gap: 12px; }
+.cc-wrap > .cc-grid { margin-bottom: 0; }
+.cc-fathom { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; }
+@media (max-width: 520px) { .cc-fathom { grid-template-columns: 1fr; } }

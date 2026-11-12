@@ -3,7 +3,7 @@ import { supabase, type MiDiaData } from "../lib/supabase";
 
 const LOC = "fssMXOOdUdCpuTFkSTGc";
 const ghl = (contactId: string | null) => (contactId ? `https://app.gohighlevel.com/v2/location/${LOC}/contacts/detail/${contactId}` : undefined);
-const CLOSERS = ["Todos", "Luca", "Jenny", "Eduardo", "Ale"];
+const CLOSERS = ["Todos", "Luca", "Jenny", "Mileces", "Ale"];
 
 // Agenda del closer: llamadas de hoy y mañana, seguimientos de la semana y lo que falta completar en GHL.
 export function MiDia({ esCloser, reloadKey }: { esCloser: boolean; reloadKey: number }) {

@@ -6,6 +6,7 @@ import { AgendasCalificadas } from "./components/AgendasCalificadas";
 import { Comercial } from "./components/Comercial";
 import { MiDia } from "./components/MiDia";
 import { CierreDia } from "./components/CierreDia";
+import { CentroComercial } from "./components/CentroComercial";
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -98,14 +99,16 @@ interface Col {
   fmt: (n: number | null) => string;
 }
 
+// Calificadas = todo lo que no es "Menos de $10k" (antes del 25-10, "Menos de $5k"): suma las dos ramas de GHL
+const calif = (r: ReportRow) => r.calificadas + (r.calificadas_jessik ?? 0);
+
 const COLS: Col[] = [
   { key: "spend", label: "Inversión", get: (r) => r.spend, fmt: money },
   { key: "agendas", label: "Agendas", title: "Contactos que agendaron en el período", get: (r) => r.agendas, fmt: num },
   { key: "cpa", label: "$ / agenda", get: (r) => costPer(r.spend, r.agendas), fmt: money },
-  { key: "calificadas", label: "Calif. DFY", title: "Agendas con facturación de US$20k/mes o más (rama \"Califica\" de GHL, la que se manda a Meta)", get: (r) => r.calificadas, fmt: num },
-  { key: "calificadas_jessik", label: "Calif. JessiK", title: "Agendas con facturación de US$5k a US$20k/mes (rama \"Califica a JessiK\", downsell; no se manda a Meta)", get: (r) => r.calificadas_jessik ?? 0, fmt: num },
-  { key: "cpq", label: "$ / calificada", get: (r) => costPer(r.spend, r.calificadas), fmt: money },
-  { key: "qrate", label: "% calif.", get: (r) => ratio(r.calificadas, r.agendas), fmt: (n) => pct(n, 0) },
+  { key: "calificadas", label: "Calificadas", title: "Agendas calificadas: facturación de US$10k/mes o más (antes del 25-10, US$5k o más)", get: (r) => calif(r), fmt: num },
+  { key: "cpq", label: "$ / calificada", get: (r) => costPer(r.spend, calif(r)), fmt: money },
+  { key: "qrate", label: "% calif.", get: (r) => ratio(calif(r), r.agendas), fmt: (n) => pct(n, 0) },
   { key: "meta_schedules", label: "Result. Meta", title: "Schedule que Meta recibió por API (calificadas, según Meta)", get: (r) => r.meta_schedules, fmt: num },
   { key: "asistencias", label: "Asistencias", title: "Antes del 21-10 desde el archivo de llamadas; después desde GHL", get: (r) => r.asistencias, fmt: num },
   { key: "ofertas", label: "Ofertas", get: (r) => r.ofertas, fmt: num },
@@ -119,17 +122,19 @@ const COLS: Col[] = [
   { key: "v2a", label: "Visita → agenda", get: (r) => ratio(r.agendas, r.landing_page_views), fmt: (n) => pct(n, 1) },
 ];
 
-// Estándares de optimización (skill meta-ads → waysuccess-standards.md). Cortes derivados del 1/9 al 15/10/2026.
-const STD = { targetCpq: 174, killSpend: 350, reviewSpend: 500, maxCpq: 260 };
+// Reglas del dueño del 29-10: calificada = US$10k+; tope US$200 por calificada; US$200 sin calificada → apagar.
+// targetCpq = referencia de noviembre (~US$130 por calificada).
+const STD = { targetCpq: 130, killSpend: 200, reviewSpend: 400, maxCpq: 200 };
 
 function verdict(r: ReportRow): { label: string; cls: string; why: string } | null {
   if (r.entity_id.startsWith("__") || r.spend <= 0) return null;
-  const cpq = r.calificadas > 0 ? r.spend / r.calificadas : null;
+  const q = calif(r);
+  const cpq = q > 0 ? r.spend / q : null;
   if (r.asistencias > 0 || r.cierres > 0)
-    return r.calificadas >= 2 && cpq != null && cpq <= STD.targetCpq
+    return q >= 2 && cpq != null && cpq <= STD.targetCpq
       ? { label: "Ganador", cls: "v-win", why: `${r.asistencias} asistencias y calificada a ${money(cpq)}` }
       : { label: "No tocar", cls: "v-keep", why: `Tiene ${r.asistencias} asistencias${r.cierres ? ` y ${r.cierres} cierres` : ""}` };
-  if (r.calificadas === 0)
+  if (q === 0)
     return r.spend >= STD.killSpend
       ? { label: "Apagar", cls: "v-kill", why: `${money(r.spend)} gastados sin calificadas` }
       : { label: "En prueba", cls: "v-test", why: `${money(r.spend)} de ${money(STD.killSpend)} sin calificada` };
@@ -168,15 +173,17 @@ export function Dashboard({ email }: { email: string }) {
   const [role, setRole] = useState<string | null>(null);
   // Show rate de Ads: solo llamadas que ya ocurrieron (las agendadas a futuro no cuentan)
   const [show, setShow] = useState<{ pasadas: number; asistencias: number; por_venir: number } | null>(null);
-  const [tab, setTab] = useState<"comercial" | "midia" | "cierre" | "ads">(new URLSearchParams(location.search).get("tab") === "cierre" ? "cierre" : "comercial");
+  const tabUrl = new URLSearchParams(location.search).get("tab");
+  const [tab, setTab] = useState<"comercial" | "midia" | "cierre" | "ads" | "centro">(tabUrl === "cierre" ? "cierre" : tabUrl === "centro" ? "centro" : "comercial");
   const isOwner = role === "owner";
   const esCloser = role === "closer";
   // Closer: Mi día + sus números. Owner: además Ads (la base también lo bloquea para el resto).
-  const TABS: ["comercial" | "midia" | "cierre" | "ads", string][] = esCloser
-    ? [["midia", "Mi día"], ["comercial", "Mis números"]]
+  // 11-11-2026: "Centro comercial" (recursos, tareas, llamadas de Fathom y alertas) para todos.
+  const TABS: ["comercial" | "midia" | "cierre" | "ads" | "centro", string][] = esCloser
+    ? [["midia", "Mi día"], ["comercial", "Mis números"], ["centro", "Centro comercial"]]
     : isOwner
-      ? [["comercial", "Comercial"], ["midia", "Mi día"], ["cierre", "Cierre de día"], ["ads", "Ads"]]
-      : [["comercial", "Comercial"], ["midia", "Mi día"]];
+      ? [["comercial", "Comercial"], ["midia", "Mi día"], ["centro", "Centro comercial"], ["cierre", "Cierre de día"], ["ads", "Ads"]]
+      : [["comercial", "Comercial"], ["midia", "Mi día"], ["centro", "Centro comercial"]];
 
   useEffect(() => {
     if (preset !== "custom") setRange(rangeFor(preset));
@@ -257,14 +264,11 @@ export function Dashboard({ email }: { email: string }) {
   const kpis: [string, string, string?][] = [
     ["Inversión", money(total.spend)],
     ["Agendas", num(total.agendas), `${money(costPer(total.spend, total.agendas))} c/u`],
-    // Calificadas = DFY + JessiK: todo menos "Menos de $5k" (hasta el 25-10) / "Menos de $10k" (desde el 25-10)
-    ["Agendas calificadas", num(total.calificadas + (total.calificadas_jessik ?? 0)), `${money(costPer(total.spend, total.calificadas + (total.calificadas_jessik ?? 0)))} por agenda calificada`],
-    ["Calificadas DFY", num(total.calificadas), `${money(costPer(total.spend, total.calificadas))} c/u`],
-    ["Calificadas JessiK", num(total.calificadas_jessik ?? 0), `${money(costPer(total.spend, total.calificadas_jessik ?? 0))} c/u · US$10k–20k/mes (antes 5k–20k)`],
+    ["Agendas calificadas", num(calif(total)), `${money(costPer(total.spend, calif(total)))} por agenda calificada · ${pct(ratio(calif(total), total.agendas), 0)} de las agendas`],
     ["Asistencias", num(total.asistencias), show
       ? `Show rate ${pct(ratio(show.asistencias, show.pasadas), 0)} · ${num(show.asistencias)} de ${num(show.pasadas)} llamadas que ya pasaron · ${num(show.por_venir)} por venir`
       : undefined],
-    ["Cierres", num(ventas.n), `${pct(ratio(ventas.n, total.asistencias), 0)} de asistencias · ${num(total.cierres)} con anuncio identificado`],
+    ["Cierres", num(ventas.n), total.asistencias > 0 ? `${pct(ratio(ventas.n, total.asistencias), 1)} de cierre sobre asistencias (${num(ventas.n)} de ${num(total.asistencias)})` : "Sin asistencias en el período"],
     ["Vendido", money(ventas.vendido)],
     ["Cobrado", money(ventas.cobrado), undefined],
     ["ROAS", total.spend > 0 ? `${(ventas.cobrado / total.spend).toFixed(2)}x` : "—", total.spend > 0 ? `Cobrado ÷ inversión · vendido ${(ventas.vendido / total.spend).toFixed(2)}x` : "Sin inversión en el período"],
@@ -317,6 +321,8 @@ export function Dashboard({ email }: { email: string }) {
 
       {tab === "midia" ? (
         <MiDia esCloser={esCloser} reloadKey={reloadKey} />
+      ) : tab === "centro" ? (
+        <CentroComercial isOwner={isOwner} reloadKey={reloadKey} />
       ) : tab === "cierre" && isOwner ? (
         <CierreDia reloadKey={reloadKey} />
       ) : tab === "comercial" || !isOwner ? (

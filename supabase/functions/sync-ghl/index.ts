@@ -3,6 +3,7 @@
 // Protegida con x-sync-key.
 // 21-10-2026: migrado a la cuenta GHL nueva (fssMX…, StartFly). Los datos de la cuenta vieja quedan en las tablas.
 // 25-10-2026: la oportunidad trae sus campos personalizados (cf), dueño y fechas de cambio; el trigger arma el historial.
+// 11-11-2026: depura del dashboard lo que GHL borró (oportunidades y contactos), con copia en ghl_purgados.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -10,9 +11,11 @@ const GHL = Deno.env.get("GHL_PIT_TOKEN")!;
 const LOC = Deno.env.get("GHL_LOCATION_ID")!;
 const H = { Authorization: `Bearer ${GHL}`, Version: "2021-07-28", Accept: "application/json" };
 const API = "https://services.leadconnectorhq.com";
-const CALENDARS = ["7SNm0NGnthgEIWCbOf05"]; // Llamada de Asesoramiento | WS (cuenta nueva)
+const CALENDARS = ["7SNm0NGnthgEIWCbOf05", "Q5crAi9OAPOqzrg4cTgU"]; // Llamada de Asesoramiento | WS + Asesoría Orgánico Quiz | WS (ahí se reagendó hasta el 10-11)
 const PIPELINES = ["kW8pBFCaVVZJ1pw9okvh", "eiE5LJcujd9GS7XFqlYl"]; // 2. Leads (Agendado) - Venta, WaySuccess — Comercial Closers
 
+// 404, o 400 con "not found": GHL ya no lo tiene
+const gone = (e: unknown) => { const s = String(e); return s.includes("GHL 404") || (s.includes("GHL 400") && /not.?found|does not exist|no.*exist/i.test(s)); };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function get(path: string, tries = 4): Promise<any> {
   const r = await fetch(path.startsWith("http") ? path : API + path, { headers: H });
@@ -109,6 +112,28 @@ Deno.serve(async (req) => {
     }));
     await upsert("ghl_appointments", apptRows);
 
+    // 10-11-2026: citas guardadas que ya no salen en el listado (canceladas o movidas): se consultan una por una para no dejarlas viejas
+    const vistos = new Set(apptRows.map((a) => a.id));
+    const { data: guardadas } = await sb.from("ghl_appointments").select("id")
+      .in("calendar_id", CALENDARS).eq("deleted", false).not("status", "in", "(cancelled,invalid)")
+      .gte("start_time", new Date(Date.now() - daysBack * 864e5).toISOString()).lte("start_time", new Date(end).toISOString());
+    const faltan = (guardadas ?? []).map((r: any) => r.id).filter((id: string) => !vistos.has(id)).slice(0, 40);
+    for (const id of faltan) {
+      try {
+        const b = await get(`/calendars/events/appointments/${id}`);
+        const a = b.appointment ?? b.event ?? b;
+        if (!a?.id) continue;
+        const st = a.appointmentStatus ?? a.appoinmentStatus;
+        await sb.from("ghl_appointments").update({
+          calendar_id: a.calendarId, start_time: a.startTime, assigned_user_id: a.assignedUserId, deleted: !!a.deleted,
+          ...(st ? { status: st } : {}), synced_at: new Date().toISOString(),
+        }).eq("id", id);
+      } catch (e) {
+        if (String(e).includes("GHL 404")) await sb.from("ghl_appointments").update({ deleted: true, synced_at: new Date().toISOString() }).eq("id", id);
+      }
+      await sleep(150);
+    }
+
     // 2) Oportunidades de los pipelines de agendas y closers
     const pipes = await get(`/opportunities/pipelines?locationId=${LOC}`);
     const stageName = new Map<string, string>();
@@ -151,6 +176,61 @@ Deno.serve(async (req) => {
     }));
     await upsert("ghl_opportunities", oppRows);
 
+    // 11-11-2026 dueño: lo que GHL depura (borra) también se depura en el dashboard.
+    // Oportunidades guardadas de estos pipelines que el listado ya no trae: se confirman una por una.
+    // 404 → se borra la fila (copia en ghl_purgados) y se revisa su contacto; si existe en otro pipeline, se actualiza.
+    let purgadas = 0, contactosPurgados = 0;
+    const vistasOpp = new Set(oppRows.map((o) => o.id));
+    const { data: oppGuardadas } = await sb.from("ghl_opportunities").select("*").in("pipeline_id", PIPELINES).range(0, 19999);
+    const oppFaltan = (oppGuardadas ?? []).filter((o: any) => !vistasOpp.has(o.id));
+    // Freno: si "faltan" demasiadas, el listado vino incompleto; no se borra nada.
+    const listadoSano = oppRows.length > 0 && oppFaltan.length <= Math.max(25, 0.1 * (oppGuardadas ?? []).length);
+    const contactosARevisar = new Set<string>();
+    if (listadoSano) {
+      for (const o of oppFaltan.slice(0, 40)) {
+        try {
+          const b = await get(`/opportunities/${o.id}`);
+          const x = b.opportunity ?? b;
+          if (x?.id && x.pipelineId) {
+            await sb.from("ghl_opportunities").update({ pipeline_id: x.pipelineId, stage_id: x.pipelineStageId, stage_name: stageName.get(x.pipelineStageId) ?? null, status: x.status, synced_at: new Date().toISOString() }).eq("id", o.id);
+          }
+        } catch (e) {
+          if (gone(e)) {
+            await sb.from("ghl_purgados").insert({ tipo: "oportunidad", ghl_id: o.id, nombre: o.name, fila: o });
+            await sb.from("ghl_opportunities").delete().eq("id", o.id);
+            purgadas++;
+            if (o.contact_id) contactosARevisar.add(o.contact_id);
+          }
+        }
+        await sleep(150);
+      }
+    }
+    // Contactos de citas marcadas como borradas en esta corrida y de oportunidades purgadas
+    for (const id of faltan) {
+      const { data: a } = await sb.from("ghl_appointments").select("contact_id, deleted").eq("id", id).maybeSingle();
+      if (a?.deleted && a.contact_id) contactosARevisar.add(a.contact_id);
+    }
+    for (const cid of [...contactosARevisar].slice(0, 40)) {
+      try { await get(`/contacts/${cid}`); } catch (e) {
+        if (gone(e)) {
+          const { data: c } = await sb.from("ghl_contacts").select("*").eq("id", cid).maybeSingle();
+          if (c) {
+            await sb.from("ghl_purgados").insert({ tipo: "contacto", ghl_id: cid, nombre: c.full_name, fila: c });
+            await sb.from("ghl_contacts").delete().eq("id", cid);
+            contactosPurgados++;
+          }
+          await sb.from("ghl_appointments").update({ deleted: true, synced_at: new Date().toISOString() }).eq("contact_id", cid);
+          const { data: os } = await sb.from("ghl_opportunities").select("*").eq("contact_id", cid);
+          for (const o of os ?? []) {
+            await sb.from("ghl_purgados").insert({ tipo: "oportunidad", ghl_id: o.id, nombre: o.name, fila: o });
+            await sb.from("ghl_opportunities").delete().eq("id", o.id);
+            purgadas++;
+          }
+        }
+      }
+      await sleep(150);
+    }
+
     // 3) Contactos: los de las citas y oportunidades que falten (o todos si contacts="all")
     const ids = new Set<string>([...apptRows.map((a) => a.contact_id), ...oppRows.map((o) => o.contact_id)].filter(Boolean));
     let toFetch = [...ids];
@@ -176,7 +256,7 @@ Deno.serve(async (req) => {
     await upsert("ghl_contacts", contactRows);
     await sb.rpc("link_sheet_calls");
 
-    const detail = { days_back: daysBack, appointments: apptRows.length, opportunities: oppRows.length, contacts_fetched: contactRows.length, contacts_pending: pending, ms: Date.now() - t0 };
+    const detail = { days_back: daysBack, appointments: apptRows.length, rechecked: faltan.length, opportunities: oppRows.length, opp_faltan: oppFaltan.length, listado_sano: listadoSano, purgadas, contactos_purgados: contactosPurgados, contacts_fetched: contactRows.length, contacts_pending: pending, ms: Date.now() - t0 };
     await sb.from("sync_runs").update({ finished_at: new Date().toISOString(), ok: true, detail }).eq("id", run!.id);
     return Response.json(detail);
   } catch (e) {
