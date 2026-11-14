@@ -226,3 +226,45 @@ table.t2 td.estado-vencido, table.t2 td.estado-sin-fecha { color: #f87171; }
 table.t2 td.estado-hoy { color: #fbbf24; }
 .vs.up, td.up { color: #4ade80; }
 .vs.down, td.down { color: #f87171; }
+
+/* ───────── 15-11 Pestañas del Tracker: Clientes · Números · Gráficos ───────── */
+.kpis3 { display: grid; gap: 8px; flex: none; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.kpis3.compacto .kpi2-value { font-size: 17px; }
+.kpi-tip { display: contents; }
+.kpis-grid3 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 10px; flex: 1; min-height: 0; align-content: stretch; }
+.kpis-grid3 .kpi2 { display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; }
+.kpis-grid3 .kpi2-value { font-size: 26px; }
+.seg-bloques { flex-wrap: wrap; }
+.seg-bloques button { padding: 5px 12px; font-size: 12.5px; }
+.seg-bloques button.on { background: color-mix(in srgb, var(--acc-2) 30%, var(--surface)); color: var(--acc-5); font-weight: 600; }
+.tab-col > .fila2.lleno { flex: 1; min-height: 0; }
+table.t2 tr.fila-total td { font-weight: 700; border-top: 2px solid var(--acc-2); background: var(--acc-suave); }
+.por-cobrar { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.por-cobrar .mini { width: 46px; height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; display: inline-block; }
+.por-cobrar .mini span { display: block; height: 100%; background: var(--acc-4); }
+.txt-alerta { color: #fbbf24; font-weight: 600; }
+.kpi2.alerta .kpi2-sub .txt-alerta { color: #fbbf24; }
+.ficha { display: grid; grid-template-columns: 130px 1fr; gap: 6px 10px; font-size: 12.5px; margin: 4px 0 10px; }
+.ficha span { color: var(--muted); }
+.ficha b { font-weight: 600; word-break: break-word; }
+.drawer .tabla { max-height: 40vh; }
+.grid3x3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 10px; flex: 1; min-height: 0; }
+.grid3x3 .panel { padding: 8px 10px; }
+.grid3x3 .panel-head { margin-bottom: 2px; }
+.grid3x3 .panel-head h2 { font-size: 13px; }
+.grid3x3 .grafico { min-height: 0; }
+.scroll-interno { flex: 1; min-height: 0; overflow-y: auto; }
+.dona-ind { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; min-height: 0; }
+.top-ind { min-height: 0; overflow-y: auto; font-size: 12px; }
+.top-ind ol { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+.top-ind li { display: list-item; }
+.top-ind li > * { vertical-align: middle; }
+.top-ind li b { float: right; }
+.top-ind .recorte { max-width: 120px; }
+.filtros-tab { border-top: 1px solid var(--border); padding-top: 8px; display: grid; gap: 8px; }
+.filtro-seccion { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--acc-4); font-weight: 600; }
+.filtro-fila .select { max-width: 220px; }
+/* 13 pestañas en una sola fila a 1440 px */
+.pestanas { gap: 1px; }
+.pestanas button { padding: 5px 5px; gap: 4px; font-size: 12px; }
+.barra-user { gap: 2px; }

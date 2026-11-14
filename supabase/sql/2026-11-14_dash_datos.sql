@@ -103,6 +103,8 @@ begin
           'resultado', d->>'Resultado', 'bono', d->>'Bono activado', 'modalidad', d->>'Modalidad pago',
           'vendido', d->'$$ Vendido (USD)', 'cobrado', d->'$$ Cobrado (USD)', 'periodo', d->>'Periodo',
           'fecha_primer_pago', d->>'Fecha primer pago', 'ciclo_asistencia', d->>'Ciclo de venta desde asistencia',
+          'numero', d->>'Numero', 'cal_agenda', d->>'Calificación histórica (respaldo P)', 'notas', d->>'Notas comerciales',
+          'cobranzas', d->>'Cobranzas (USD)',
           'objeciones', (select coalesce(jsonb_agg(substr(k, 5)), '[]') from jsonb_each_text(d) e(k, v)
                          where k like 'obj:%' and v ~ '^\s*[0-9]+(\.[0-9]+)?\s*$' and v::numeric >= 1)))
         from tl where (todo or closer = yo) and (d->>'Fecha LLamada Calendar' >= desde::text or lower(btrim(d->>'Resultado')) = 'vendido')), '[]'),
@@ -114,6 +116,16 @@ begin
           'cobrado_acumulado', d->'Cobrado acumulado', 'excedente', d->'Excedente sobre vendido', 'tier', d->>'Tier',
           'industria', d->>'Industria'))
         from tc where todo or closer = yo), '[]'),
+      -- 15-11: Cierres — Clientes (lista de cierres del Tracker) + validación geográfica por fila de Llamadas
+      'cierres', coalesce((select jsonb_agg(jsonb_build_object(
+          'fila', x.fila, 'fecha', x.datos->>'FECHA', 'tipo', x.datos->>'TIPO', 'cliente', x.datos->>'CLIENTE', 'email', x.datos->>'EMAIL',
+          'telefono', x.datos->>'TELÉFONO', 'closer', dash_closer(x.datos->>'CLOSER'), 'producto', x.datos->>'PRODUCTO', 'fuente', x.datos->>'FUENTE',
+          'vendido', x.datos->'VENDIDO', 'cobrado', x.datos->'COBRADO', 'fecha_original', x.datos->>'FECHA ORIGINAL', 'modalidad', x.datos->>'MODALIDAD',
+          'pais', x.datos->>'PAÍS', 'notas', x.datos->>'NOTAS', 'fila_llamadas', x.datos->>'FILA') order by x.fila)
+        from tracker_filas x where x.hoja = 'Cierres' and (todo or dash_closer(x.datos->>'CLOSER') = yo)), '[]'),
+      'geo', coalesce((select jsonb_agg(jsonb_build_object('fila_llamadas', g.datos->>'Fila Llamadas', 'pais', g.datos->>'País validado',
+          'estado', g.datos->>'Estado validado', 'ciudad', g.datos->>'Ciudad validada'))
+        from tracker_filas g where g.hoja = 'Geo'), '[]'),
       'proyecciones', case when todo then
         (select jsonb_object_agg(fila::text, datos) from tracker_filas where hoja = 'Proyecciones') end,
       'sincronizado', (select max(synced_at) from tracker_filas)

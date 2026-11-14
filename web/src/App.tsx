@@ -15,6 +15,10 @@ import { Cobranza } from "./components/tabs/Cobranza";
 import { Hoy } from "./components/tabs/Hoy";
 import { Ads } from "./components/tabs/Ads";
 import { CentroComercial } from "./components/CentroComercial";
+import { Clientes } from "./components/tabs/Clientes";
+import { Numeros } from "./components/tabs/Numeros";
+import { Graficos } from "./components/tabs/Graficos";
+import { FILTROS_TAB_VACIOS, HISTORICO_CLIENTES, ctxTracker, opcionesTab, type FiltrosTab } from "./lib/metricasTracker";
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -74,10 +78,10 @@ function rangeFor(p: Preset): [string, string] {
 }
 
 // ───────── Pestañas ─────────
-type Tab = "resumen" | "equipo" | "seguimientos" | "metas" | "tendencias" | "ciclo" | "cobranza" | "hoy" | "ads" | "centro";
+type Tab = "resumen" | "equipo" | "seguimientos" | "metas" | "tendencias" | "ciclo" | "cobranza" | "clientes" | "numeros" | "graficos" | "hoy" | "ads" | "centro";
 const TABS: [Tab, string][] = [
   ["resumen", "Resumen"], ["equipo", "Equipo"], ["seguimientos", "Seguimientos"], ["metas", "Metas"], ["tendencias", "Tendencias"],
-  ["ciclo", "Ciclo"], ["cobranza", "Cobranza"], ["hoy", "Hoy"], ["ads", "Ads"], ["centro", "Centro comercial"],
+  ["ciclo", "Ciclo"], ["cobranza", "Cobranza"], ["clientes", "Clientes"], ["numeros", "Números"], ["graficos", "Gráficos"], ["hoy", "Hoy"], ["ads", "Ads"], ["centro", "Centro comercial"],
 ];
 const SIN_PERIODO: Tab[] = ["hoy", "centro"];
 
@@ -99,6 +103,8 @@ function leerURL() {
     ciclo: (q.get("ciclo") === "pago" ? "pago" : "embudo") as "embudo" | "pago",
     pf,
     outliers: q.get("outliers") == null ? EXCLUIR_OUTLIERS_POR_DEFECTO : q.get("outliers") === "1",
+    // Filtros propios de Clientes (tipo, modalidad, país) y Gráficos (país)
+    ft: { tipo: (q.get("tipo") as FiltrosTab["tipo"]) || "Todos", modalidad: q.get("modalidad") || "Todas", pais: q.get("pais") || "Todos" } as FiltrosTab,
   };
 }
 
@@ -111,6 +117,7 @@ export function Dashboard({ email }: { email: string }) {
   const [cicloVista, setCicloVista] = useState(ini.ciclo);
   const [pf, setPf] = useState<FiltrosPago>(ini.pf);
   const [outliers, setOutliers] = useState(ini.outliers);
+  const [ft, setFt] = useState<FiltrosTab>(ini.ft);
   const [d, setD] = useState<DashDatos | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -151,9 +158,11 @@ export function Dashboard({ email }: { email: string }) {
     if (f.closer !== "Todos") q.set("closer", f.closer);
     if (f.tier !== "Todos") q.set("tier", f.tier);
     if (f.fuente !== "Todas") q.set("fuente", f.fuente);
+    if (tab === "clientes" || tab === "graficos") { if (ft.pais !== "Todos") q.set("pais", ft.pais); }
+    if (tab === "clientes") { if (ft.tipo !== "Todos") q.set("tipo", ft.tipo); if (ft.modalidad !== "Todas") q.set("modalidad", ft.modalidad); }
     if (tab === "ciclo") { q.set("ciclo", cicloVista); if (Object.values(pf).some((v) => v.length)) q.set("mf", JSON.stringify(pf)); if (outliers !== EXCLUIR_OUTLIERS_POR_DEFECTO) q.set("outliers", outliers ? "1" : "0"); }
     history.replaceState(null, "", `${location.pathname}?${q}`);
-  }, [tab, preset, from, to, f, cicloVista, pf, outliers]);
+  }, [tab, preset, from, to, f, cicloVista, pf, outliers, ft]);
 
   // Actualizar: trae GHL y Meta al momento y recarga
   const refresh = useCallback(async () => {
@@ -180,6 +189,16 @@ export function Dashboard({ email }: { email: string }) {
     f.tier !== "Todos" ? { k: "tier" as const, label: `Tier: ${f.tier}`, vacio: "Todos" } : null,
     f.fuente !== "Todas" ? { k: "fuente" as const, label: `Fuente: ${f.fuente}`, vacio: "Todas" } : null,
   ].filter((x): x is { k: keyof Filtros; label: string; vacio: string } => !!x);
+  // Filtros propios de la pestaña (Clientes: tipo, modalidad, país · Gráficos: país)
+  const conFt = tab === "clientes" || tab === "graficos";
+  const activosTab: { k: keyof FiltrosTab; label: string }[] = !conFt ? [] : [
+    tab === "clientes" && ft.tipo !== "Todos" ? { k: "tipo" as const, label: `Tipo: ${ft.tipo}` } : null,
+    tab === "clientes" && ft.modalidad !== "Todas" ? { k: "modalidad" as const, label: `Modalidad: ${ft.modalidad}` } : null,
+    ft.pais !== "Todos" ? { k: "pais" as const, label: `País: ${ft.pais}` } : null,
+  ].filter((x): x is { k: keyof FiltrosTab; label: string } => !!x);
+  const ctx = useMemo(() => (d ? ctxTracker(d) : null), [d]);
+  const optsTab = useMemo(() => (ctx ? opcionesTab(ctx) : { modalidades: [], paises: [] }), [ctx]);
+  const nActivos = activos.length + activosTab.length;
   const ultima = d?.sync?.ghl ? new Date(d.sync.ghl).toLocaleString("es", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
   const props = d ? { d, f: fEf, from, to } : null;
 
@@ -227,8 +246,8 @@ export function Dashboard({ email }: { email: string }) {
             </span>
           )}
           <span className="ancla">
-            <button className={`btn-filtros ${activos.length ? "on" : ""}`} onClick={() => setPanel(panel === "filtros" ? null : "filtros")}>
-              Filtros{activos.length ? ` · ${activos.length}` : ""} ▾
+            <button className={`btn-filtros ${nActivos ? "on" : ""}`} onClick={() => setPanel(panel === "filtros" ? null : "filtros")}>
+              Filtros{nActivos ? ` · ${nActivos}` : ""} ▾
             </button>
             {panel === "filtros" && (
               <div className="popover" role="dialog" aria-label="Filtros">
@@ -236,16 +255,25 @@ export function Dashboard({ email }: { email: string }) {
                 {!d?.closer_fijo && <div className="filtro-fila"><span>Closer</span><Seg label="Closer" value={f.closer} onChange={(v) => setF({ ...f, closer: v })} options={[["Todos", "Todos"], ...opts.closers.map((c) => [c, c] as const)] as const} /></div>}
                 <div className="filtro-fila"><span>Tier</span><Seg label="Tier setter" value={f.tier} onChange={(v) => setF({ ...f, tier: v })} options={[["Todos", "Todos"], ...opts.tiers.map((t) => [t, t] as const)] as const} /></div>
                 <div className="filtro-fila"><span>Fuente</span><Seg label="Fuente" value={f.fuente} onChange={(v) => setF({ ...f, fuente: v })} options={[["Todas", "Todas"], ...opts.fuentes.map((x) => [x, x] as const)] as const} /></div>
+                {conFt && (
+                  <div className="filtros-tab">
+                    <div className="filtro-seccion">{tab === "clientes" ? "Clientes" : "Gráficos"}</div>
+                    {tab === "clientes" && <div className="filtro-fila"><span>Tipo</span><Seg label="Tipo de cierre" value={ft.tipo} onChange={(v) => setFt({ ...ft, tipo: v })} options={[["Todos", "Todos"], ["Nuevos", "Nuevos"], ["Seguimiento", "Seguimiento"]] as const} /></div>}
+                    {tab === "clientes" && <div className="filtro-fila"><span>Modalidad</span><select className="select" value={ft.modalidad} onChange={(e) => setFt({ ...ft, modalidad: e.target.value })}><option value="Todas">Todas</option>{optsTab.modalidades.map((m) => <option key={m} value={m}>{m}</option>)}</select></div>}
+                    <div className="filtro-fila"><span>País</span><select className="select" value={ft.pais} onChange={(e) => setFt({ ...ft, pais: e.target.value })}><option value="Todos">Todos</option>{optsTab.paises.map((m) => <option key={m} value={m}>{m}</option>)}</select></div>
+                  </div>
+                )}
                 <div className="pop-acciones">
-                  <button className="link" onClick={() => setF({ ...FILTROS_VACIOS, closer: d?.closer_fijo ?? "Todos" })}>Limpiar todo</button>
+                  <button className="link" onClick={() => { setF({ ...FILTROS_VACIOS, closer: d?.closer_fijo ?? "Todos" }); setFt(FILTROS_TAB_VACIOS); }}>Limpiar todo</button>
                   <button className="primary" onClick={() => setPanel(null)}>Listo</button>
                 </div>
               </div>
             )}
           </span>
-          {activos.length > 0 && (
+          {nActivos > 0 && (
             <span className="chips">
               {activos.map((a) => <span key={a.k} className="chip-filtro">{a.label}<button aria-label={`Quitar ${a.label}`} onClick={() => setF({ ...f, [a.k]: a.vacio })}>✕</button></span>)}
+              {activosTab.map((a) => <span key={a.k} className="chip-filtro">{a.label}<button aria-label={`Quitar ${a.label}`} onClick={() => setFt({ ...ft, [a.k]: FILTROS_TAB_VACIOS[a.k] })}>✕</button></span>)}
             </span>
           )}
         </div>
@@ -270,6 +298,9 @@ export function Dashboard({ email }: { email: string }) {
           : tab === "tendencias" ? <Tendencias {...props} />
           : tab === "ciclo" ? <Ciclo {...props} vista={cicloVista} setVista={setCicloVista} pf={pf} setPf={setPf} outliers={outliers} setOutliers={setOutliers} />
           : tab === "cobranza" ? <Cobranza {...props} />
+          : tab === "clientes" && ctx ? <Clientes {...props} ctx={ctx} ft={ft} from={preset === "all" ? HISTORICO_CLIENTES : from} />
+          : tab === "numeros" && ctx ? <Numeros {...props} ctx={ctx} />
+          : tab === "graficos" && ctx ? <Graficos {...props} ctx={ctx} pais={ft.pais} />
           : tab === "hoy" ? <Hoy d={props.d} f={props.f} reloadKey={reloadKey} esCloser={esCloser} />
           : null}
       </main>

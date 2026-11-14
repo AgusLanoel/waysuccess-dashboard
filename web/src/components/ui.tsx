@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { usePaleta } from "../lib/paleta";
 import {
-  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 
 // ───────── Formato ─────────
@@ -140,6 +140,8 @@ const ejes = { stroke: "var(--axis)", tick: { fill: "var(--muted)", fontSize: 11
 const tt = { contentStyle: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }, labelStyle: { color: "var(--text)" }, itemStyle: { color: "var(--text-2)" }, cursor: { fill: "var(--surface-2)" } };
 export interface Serie { key: string; label: string; color: string; stack?: string }
 type Fmt = (n: number) => string;
+// Ejes con dinero en formato corto (US$400k) para que no se corten; el tooltip conserva el valor exacto
+const fmtEje = (fmt: Fmt): Fmt => (fmt === money ? (n) => (Math.abs(n) >= 1000 ? `US$${usd.format(Math.round(n / 1000))}k` : money(n)) : fmt);
 
 export function Barras({ data, x, series, fmt = num, alto = "100%", horizontal = false }: { data: Record<string, unknown>[]; x: string; series: Serie[]; fmt?: Fmt; alto?: number | string; horizontal?: boolean }) {
   const col = useColor();
@@ -148,8 +150,9 @@ export function Barras({ data, x, series, fmt = num, alto = "100%", horizontal =
     <ResponsiveContainer width="100%" height={alto as number}>
       <BarChart data={data} layout={horizontal ? "vertical" : "horizontal"} margin={{ top: 6, right: 12, left: horizontal ? 4 : 0, bottom: 0 }} barGap={2} barCategoryGap="22%">
         <CartesianGrid stroke="var(--grid)" vertical={horizontal} horizontal={!horizontal} />
-        {horizontal ? <><XAxis type="number" {...ejes} tickFormatter={fmt} /><YAxis type="category" dataKey={x} {...ejes} width={150} /></>
-          : <><XAxis dataKey={x} {...ejes} /><YAxis {...ejes} tickFormatter={fmt} width={56} /></>}
+        {/* Recharts no recorre fragmentos: los ejes van como hijos directos */}
+        {horizontal ? <XAxis type="number" {...ejes} tickFormatter={fmtEje(fmt)} /> : <XAxis dataKey={x} {...ejes} />}
+        {horizontal ? <YAxis type="category" dataKey={x} {...ejes} width={150} interval={0} /> : <YAxis {...ejes} tickFormatter={fmtEje(fmt)} width={56} />}
         <Tooltip {...tt} formatter={(v: number, n: string) => [fmt(v), n]} />
         {series.length > 1 && <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-2)" }} iconType="circle" iconSize={8} />}
         {series.map((s) => <Bar key={s.key} dataKey={s.key} name={s.label} fill={col(s.color)} stackId={s.stack} radius={s.stack ? 0 : horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]} maxBarSize={36} />)}
@@ -171,6 +174,51 @@ export function Lineas({ data, x, series, fmt = pct, alto = "100%" }: { data: Re
         {series.length > 1 && <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-2)" }} iconType="circle" iconSize={8} />}
         {series.map((s) => <Line key={s.key} dataKey={s.key} name={s.label} stroke={col(s.color)} strokeWidth={2} dot={{ r: 4, strokeWidth: 2, fill: "var(--surface)" }} activeDot={{ r: 5 }} connectNulls />)}
       </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+// Barras por mes (Gráficos, 15-11): último mes resaltado en el tono fuerte, meses anteriores en tono claro,
+// apiladas si hay varias series y con línea de meta (Proyecciones) cuando existe.
+export function BarrasMes({ data, series, fmt = num, meta }: { data: Record<string, unknown>[]; series: Serie[]; fmt?: Fmt; meta?: string }) {
+  const col = useColor();
+  if (!data.length || data.every((d) => series.every((s) => !Number(d[s.key])))) return <Vacio txt="Sin datos para este filtro" />;
+  const ultimo = data.length - 1;
+  const hayMeta = !!meta && data.some((d) => d[meta] != null);
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <ComposedChart data={data} margin={{ top: 6, right: 8, left: 0, bottom: 0 }} barCategoryGap="28%">
+        <CartesianGrid stroke="var(--grid)" vertical={false} />
+        <XAxis dataKey="mes" {...ejes} />
+        <YAxis {...ejes} tickFormatter={fmtEje(fmt)} width={60} />
+        <Tooltip {...tt} formatter={(v: number, n: string) => [fmt(v), n]} />
+        {(series.length > 1 || hayMeta) && <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-2)" }} iconType="circle" iconSize={7} />}
+        {series.map((s, si) => (
+          <Bar key={s.key} dataKey={s.key} name={s.label} stackId={series.length > 1 ? "m" : undefined} fill={col(s.color)} maxBarSize={44}
+            radius={series.length > 1 && si < series.length - 1 ? 0 : [4, 4, 0, 0]}>
+            {series.length === 1 && data.map((_, i) => <Cell key={i} fill={col(i === ultimo ? s.color : "tono:1")} />)}
+          </Bar>
+        ))}
+        {hayMeta && <Line dataKey={meta} name="Meta" stroke="var(--text-2)" strokeDasharray="5 4" strokeWidth={2} dot={{ r: 3 }} connectNulls />}
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+// Dona (participación por fuente)
+export function Dona({ data, fmt = num, onClick, activo }: { data: { k: string; n: number }[]; fmt?: Fmt; onClick?: (k: string) => void; activo?: string }) {
+  const col = useColor();
+  if (!data.length) return <Vacio txt="Sin datos para este filtro" />;
+  const total = data.reduce((a, d) => a + d.n, 0);
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <Pie data={data} dataKey="n" nameKey="k" innerRadius="52%" outerRadius="82%" paddingAngle={2} stroke="var(--surface)" onClick={(e: { k?: string }) => e?.k && onClick?.(e.k)}>
+          {data.map((d, i) => <Cell key={d.k} fill={col(`tono:${[1, 3, 0, 4, 2, 5][i % 6]}`)} opacity={activo && activo !== d.k ? 0.45 : 1} style={{ cursor: onClick ? "pointer" : "default" }} />)}
+        </Pie>
+        <Tooltip {...tt} formatter={(v: number, n: string) => [`${fmt(v)} · ${Math.round((v / total) * 100)}%`, n]} />
+        <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-2)" }} iconType="circle" iconSize={7} layout="vertical" align="right" verticalAlign="middle" />
+      </PieChart>
     </ResponsiveContainer>
   );
 }

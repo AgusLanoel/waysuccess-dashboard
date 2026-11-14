@@ -63,7 +63,7 @@ function monto(v: unknown): number | null {
 const colLetra = (i: number) => { let s = ""; i++; while (i > 0) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; };
 
 // CSV de cada hoja vía Drive (export con gid): no requiere la API de Sheets habilitada en el proyecto de Google.
-const GIDS = { llamadas: 584734302, cobros: 1966110601, proyecciones: 493758878 };
+const GIDS = { llamadas: 584734302, cobros: 1966110601, proyecciones: 493758878, clientes: 602697806 };
 function csv(text: string): string[][] {
   const out: string[][] = []; let row: string[] = []; let cur = ""; let q = false;
   for (let i = 0; i < text.length; i++) {
@@ -87,7 +87,7 @@ async function hoja(t: string, gid: number) {
 
 async function leer() {
   const t = await token();
-  const [ll, co, pr] = await Promise.all([hoja(t, GIDS.llamadas), hoja(t, GIDS.cobros), hoja(t, GIDS.proyecciones)]) as unknown[][][];
+  const [ll, co, pr, cc] = await Promise.all([hoja(t, GIDS.llamadas), hoja(t, GIDS.cobros), hoja(t, GIDS.proyecciones), hoja(t, GIDS.clientes)]) as unknown[][][];
 
   const filas: { hoja: string; fila: number; datos: Record<string, unknown> }[] = [];
 
@@ -134,6 +134,37 @@ async function leer() {
     const d: Record<string, unknown> = {};
     pr[i].forEach((v, c) => { if (v !== "" && v != null) d[colLetra(c)] = typeof v === "string" ? clean(v) : v; });
     if (Object.keys(d).length) filas.push({ hoja: "Proyecciones", fila: i + 1, datos: d });
+  }
+
+  // Cierres — Clientes (15-11): lista completa de cierres (bloque auxiliar FECHA…FILA, encabezado en mayúsculas)
+  // y validación geográfica (Fila Llamadas · País validado · Estado validado · Ciudad validada · Origen de corrección).
+  // Columnas por TEXTO del encabezado, no por letra.
+  const iEnc = cc.findIndex((r) => r.some((v) => clean(v) === "FECHA") && r.some((v) => clean(v) === "CLIENTE"));
+  if (iEnc >= 0) {
+    const enc = cc[iEnc].map(clean);
+    const ini = enc.indexOf("FECHA"), fin = enc.indexOf("FILA", ini);
+    for (let i = iEnc + 1; i < cc.length; i++) {
+      const row = cc[i];
+      const d: Record<string, unknown> = {};
+      for (let c = ini; c <= fin; c++) {
+        const h = enc[c], v = row[c];
+        if (!h || v === "" || v == null) continue;
+        if (h.startsWith("FECHA")) { d[h] = fecha(v); d[h + "__raw"] = v; }
+        else if (["VENDIDO", "COBRADO", "PENDIENTE"].includes(h)) d[h] = monto(v);
+        else d[h] = clean(v);
+      }
+      if (d.CLIENTE) filas.push({ hoja: "Cierres", fila: i + 1, datos: d });
+    }
+  }
+  const iGeo = cc.findIndex((r) => r.some((v) => clean(v) === "País validado"));
+  if (iGeo >= 0) {
+    const enc = cc[iGeo].map(clean);
+    const cols = ["Fila Llamadas", "País validado", "Estado validado", "Ciudad validada", "Origen de corrección"].map((h) => [h, enc.indexOf(h)] as const);
+    for (let i = iGeo + 1; i < cc.length; i++) {
+      const d: Record<string, unknown> = {};
+      for (const [h, c] of cols) if (c >= 0 && clean(cc[i][c])) d[h] = clean(cc[i][c]);
+      if (d["Fila Llamadas"]) filas.push({ hoja: "Geo", fila: i + 1, datos: d });
+    }
   }
   return filas;
 }

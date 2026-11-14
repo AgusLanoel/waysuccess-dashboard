@@ -50,7 +50,15 @@ export interface TrackerLlamada {
   campana: string | null; tier: string | null; estado_llamada: string | null; asistencia_calificada: string | null; oferta: string | null; resultado: string | null;
   bono: string | null; modalidad: string | null; vendido: number | string | null; cobrado: number | string | null; periodo: string | null;
   fecha_primer_pago: string | null; ciclo_asistencia: string | null; objeciones: string[];
+  numero?: string | null; cal_agenda?: string | null; notas?: string | null; cobranzas?: string | number | null;
 }
+// Hoja "Cierres — Clientes" del Tracker: una fila = un cierre (bloque FECHA…FILA)
+export interface CierreTracker {
+  fila: number; fecha: string | null; tipo: string | null; cliente: string; email: string | null; telefono: string | null; closer: string | null;
+  producto: string | null; fuente: string | null; vendido: number | string | null; cobrado: number | string | null; fecha_original: string | null;
+  modalidad: string | null; pais: string | null; notas: string | null; fila_llamadas: string | null;
+}
+export interface GeoValidada { fila_llamadas: string; pais: string | null; estado: string | null; ciudad: string | null }
 export interface Cobro {
   fila: number; fecha: string | null; fecha_raw: string | null; cliente: string | null; email: string | null; fila_llamadas: string | null; closer: string | null;
   fuente: string | null; producto: string | null; tipo: string | null; cobrado: number | null; vendido_nuevo: number | null; observacion: string | null;
@@ -60,7 +68,7 @@ export interface DashDatos {
   generado: string; desde: string; rol: string | null; closer_fijo: string | null; sync: Record<string, string>;
   equipo: { nombre: string; rol: string; activo: boolean; comision_dfy: number | null; comision_jessik: number | null }[];
   llamadas: Llamada[]; opps: Opp[]; agendas: Agenda[];
-  tracker: { llamadas: TrackerLlamada[]; cobros: Cobro[]; proyecciones: Record<string, Record<string, string | number>> | null; sincronizado: string | null };
+  tracker: { llamadas: TrackerLlamada[]; cobros: Cobro[]; cierres?: CierreTracker[]; geo?: GeoValidada[]; proyecciones: Record<string, Record<string, string | number>> | null; sincronizado: string | null };
 }
 
 // ───────────────────────── Normalización ─────────────────────────
@@ -89,14 +97,19 @@ export function fuenteNorm(f: string | null | undefined): string | null {
   if (t.startsWith("afil")) return "Afiliados";
   return f!.trim();
 }
-// Industrias con mayúsculas, espacios y variantes unificadas (regla 5)
+// Industrias con mayúsculas, espacios y variantes unificadas (regla 5). Mapa de normalización: patrón → nombre único.
+// El orden importa (Desarrollador Real Estate antes que Real Estate). Lo que no entra en ningún patrón queda con mayúscula inicial.
+export const MAPA_INDUSTRIAS: [RegExp, string][] = [
+  [/desarrollador/, "Desarrollador Real Estate"],
+  [/real\s*st?ate|realtor/, "Real Estate / Realtor"],
+  [/agencia.*marketing/, "Agencia de marketing"],
+  [/coach|mentor|consultor/, "Coach / Mentor / Consultor"],
+  [/migraci|inmigraci/, "Inmigración"],
+];
 export function industriaNorm(i: string | null | undefined): string | null {
   const t = norm(i);
-  if (!t || t === "-") return null;
-  if (/real\s*st?ate|realtor/.test(t)) return "Real Estate / Realtor";
-  if (/desarrollador/.test(t)) return "Desarrollador Real Estate";
-  if (/agencia.*marketing/.test(t)) return "Agencia de marketing";
-  if (/migraci|inmigraci/.test(t)) return "Inmigración";
+  if (!t || t === "-" || t === "sin industria") return null;
+  for (const [re, nombre] of MAPA_INDUSTRIAS) if (re.test(t)) return nombre;
   const s = i!.replace(/\s+/g, " ").trim();
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
@@ -139,8 +152,8 @@ export function pasa(r: ConDims, f: Filtros, sin: Partial<Record<keyof Filtros, 
   if (!sin.fuente && f.fuente !== "Todas" && (r.fuente ?? "") !== f.fuente) return false;
   return true;
 }
-const dimsTracker = (t: TrackerLlamada) => ({ producto: productoTracker(t.producto), closer: closerNorm(t.closer), tier: t.tier || null, fuente: fuenteNorm(t.origen) });
-const dimsCobro = (c: Cobro) => ({ producto: productoTracker(c.producto), closer: closerNorm(c.closer), tier: c.tier || null, fuente: fuenteNorm(c.fuente) });
+export const dimsTracker = (t: TrackerLlamada) => ({ producto: productoTracker(t.producto), closer: closerNorm(t.closer), tier: t.tier || null, fuente: fuenteNorm(t.origen) });
+export const dimsCobro = (c: Cobro) => ({ producto: productoTracker(c.producto), closer: closerNorm(c.closer), tier: c.tier || null, fuente: fuenteNorm(c.fuente) });
 
 // ───────────────────────── Base: un lead cuenta UNA vez, con su PRIMERA llamada ─────────────────────────
 export interface Lead { persona: string; primeraLlamada: string | null; primeraAsistencia: string | null; asistCalificada: boolean; primeraOferta: string | null; producto: Producto; closer: string | null; fuente: string | null; tier: string | null }
