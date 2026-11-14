@@ -115,6 +115,7 @@ export function Dashboard({ email }: { email: string }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const versionNueva = useVersionNueva();
 
   // Datos crudos (una sola foto para todas las pestañas)
   useEffect(() => {
@@ -209,6 +210,12 @@ export function Dashboard({ email }: { email: string }) {
           {hayFiltros && <button className="link" onClick={() => setF({ ...FILTROS_VACIOS, closer: d?.closer_fijo ?? "Todos" })}>Limpiar filtros</button>}
         </div>
       </header>
+      {versionNueva && (
+        <div className="aviso-version">
+          Hay una versión nueva del dashboard.
+          <button className="primary" onClick={() => location.reload()}>Recargar</button>
+        </div>
+      )}
       {showPw && <ChangePassword onDone={() => setShowPw(false)} />}
       <main className="contenido">
         {err && <p className="error">Error: {err}</p>}
@@ -227,6 +234,26 @@ export function Dashboard({ email }: { email: string }) {
       </main>
     </div>
   );
+}
+
+// Avisa cuando se publicó una versión nueva y la pestaña sigue con la vieja (14-11: Luca seguía viendo el diseño anterior).
+// Compara el bundle cargado con el que sirve hoy index.html; en desarrollo no hay bundle y no hace nada.
+function useVersionNueva() {
+  const [nueva, setNueva] = useState(false);
+  useEffect(() => {
+    const actual = document.querySelector<HTMLScriptElement>('script[src*="/assets/index-"]')?.getAttribute("src");
+    if (!actual) return;
+    const revisar = () =>
+      fetch("/", { cache: "no-store" }).then((r) => r.text()).then((html) => {
+        const m = html.match(/\/assets\/index-[\w-]+\.js/);
+        if (m && !actual.endsWith(m[0])) setNueva(true);
+      }).catch(() => {});
+    const id = setInterval(revisar, 5 * 60_000);
+    const alVolver = () => document.visibilityState === "visible" && revisar();
+    document.addEventListener("visibilitychange", alVolver);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", alVolver); };
+  }, []);
+  return nueva;
 }
 
 function ChangePassword({ onDone }: { onDone: () => void }) {

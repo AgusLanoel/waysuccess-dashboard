@@ -230,7 +230,9 @@ function proponer(v: { asistio: string; realizo: string; oferta: string }, ia: a
     if (ia.oferta !== "Ninguna") {
       const val = OFERTA_GHL[ia.oferta];
       if (!v.realizo) p.realizo = "Si"; else if (v.realizo !== "Si") revisar.push(`el closer marcó ¿Se realizo la oferta? = ${v.realizo}, la transcripción dice Sí (${ia.precio_detectado})`);
-      if (!v.oferta) p.oferta = val; else if (v.oferta !== val) revisar.push(`el closer marcó Oferta = ${v.oferta}, la transcripción dice ${val} (${ia.precio_detectado})`);
+      // 14-11 (dueño): closer marcó JessiK y la grabación solo tiene DFY → la bajada a JessiK fue fuera de la grabación; no es contradicción.
+      const bajadaFuera = v.oferta === OFERTA_GHL.JessiK && ia.oferta === "DFY";
+      if (!v.oferta) p.oferta = val; else if (v.oferta !== val && !bajadaFuera) revisar.push(`el closer marcó Oferta = ${v.oferta}, la transcripción dice ${val} (${ia.precio_detectado})`);
     } else if (!v.realizo) p.realizo = siempreSi ? "Si" : "No";
     else if (v.realizo === "Si" && !siempreSi) revisar.push("el closer marcó ¿Se realizo la oferta? = Si, la transcripción no tiene precio");
   }

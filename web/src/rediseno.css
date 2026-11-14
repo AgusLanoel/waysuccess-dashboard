@@ -155,3 +155,7 @@ table.t2 td.estado-hoy { color: var(--warn); font-weight: 600; }
   .kpis5, .kpis6 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tabla-scroll { max-height: 520px; }
 }
+
+/* Aviso de versión nueva */
+.aviso-version { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; box-shadow: 0 6px 24px rgb(0 0 0 / 0.18); font-size: 13px; }
+.aviso-version .primary { padding: 5px 12px; }
