@@ -64,7 +64,7 @@ export function CentroComercial({ isOwner, reloadKey }: { isOwner: boolean; relo
   }
   async function agregarTarea() {
     if (!nuevaTarea.trim()) return;
-    const { error } = await supabase.from("com_tareas").insert({ titulo: nuevaTarea.trim(), orden: (tareas.at(-1)?.orden ?? 100) + 10 });
+    const { error } = await supabase.from("com_tareas").insert({ titulo: nuevaTarea.trim(), orden: (tareas[tareas.length - 1]?.orden ?? 100) + 10 });
     if (error) return setErr(error.message);
     setNuevaTarea("");
     setTick((x) => x + 1);
@@ -110,7 +110,7 @@ export function CentroComercial({ isOwner, reloadKey }: { isOwner: boolean; relo
             <div key={cat} className="card table-card tone-embudo">
               <div className="table-head">
                 <h2 className="section-title"><i className="dot" />{cat}</h2>
-                {isOwner && <button className="link" onClick={() => setEditando({ categoria: cat, orden: (items.at(-1)?.orden ?? 0) + 10 })}>+ Agregar</button>}
+                {isOwner && <button className="link" onClick={() => setEditando({ categoria: cat, orden: (items[items.length - 1]?.orden ?? 0) + 10 })}>+ Agregar</button>}
               </div>
               <ul className="cc-list">
                 {items.map((r) => (
