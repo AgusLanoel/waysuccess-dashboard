@@ -9,6 +9,8 @@
 //   busca en Drive "Asesoría Personalizada | {lead} - … - Notas de Gemini" (trae la transcripción; −2 h / +24 h de la llamada), Claude detecta el
 //   precio presentado → "¿Se realizo la oferta?" + "Oferta", nota con evidencia y enlace. Sin pisar lo cargado:
 //   si contradice, nota "Revisar oferta". Sin transcripción a las 24 h → etiqueta revisar-oferta, sin inventar.
+//   14-11 (dueño): si se presentaron los dos productos, Oferta = la ÚLTIMA que el closer intentó vender
+//   (pitcheó DFY y bajó a JessiK → JessiK), aunque el lead no la haya aceptado.
 // Backfill: {"action":"backfill"} arma la cola; {"action":"backfill_dry"} (repetir hasta vaciar) calcula la propuesta
 //   sin escribir en GHL; {"action":"aplicar"} escribe solo
 //   las filas con aprobado = true (las aprueba Luca sobre el CSV).
@@ -187,7 +189,7 @@ const ESQUEMA = {
   type: "object", additionalProperties: false,
   required: ["oferta", "ambas", "precio_detectado", "evidencia"],
   properties: {
-    oferta: { type: "string", enum: ["DFY", "JessiK", "Ninguna"], description: "Producto cuyo precio se le presentó al lead. Si se presentaron los dos, el que eligió o el último que se discutió al cierre." },
+    oferta: { type: "string", enum: ["DFY", "JessiK", "Ninguna"], description: "Producto cuyo precio se le presentó al lead. Si se presentaron los dos, el ÚLTIMO que el closer intentó vender (pitcheó DFY y bajó a JessiK → JessiK)." },
     ambas: { type: "boolean", description: "Se presentaron los precios de los dos productos" },
     precio_detectado: { type: "string", description: "El precio tal como se dijo (ej. '30.000', '980 al mes'); vacío si no hubo precio" },
     evidencia: { type: "string", description: "Frase textual corta de la transcripción que lo respalda (máx. 200 caracteres); vacío si no hubo precio" },
@@ -198,7 +200,7 @@ const REGLAS = `Detectás qué precio se le presentó al lead en una llamada de 
 - JessiK ($10.000): "10.000", "10k", financiado 11.700 u 11.764, 980 (o 890 a 900) al mes, suscripción anual.
 - Si no se dijo ningún precio: "Ninguna". Mencionar el servicio sin precio NO es oferta.
 La transcripción automática a veces se come dígitos (aparece "$,000" o "mil"): resolvelo con el contexto (producto descrito, cuotas, "12 meses", "50%").
-Si se presentaron los dos, elegí el que el lead eligió o el último que se discutió al cierre, y marcá ambas = true.
+Si se presentaron los dos, la oferta es la ÚLTIMA que el closer intentó vender en la llamada, aunque el lead no la haya aceptado (ej.: pitcheó DFY y después bajó a JessiK → JessiK), y marcá ambas = true.
 Respondé solo con lo que dice la transcripción.`;
 async function clasificar(texto: string, lead: string) {
   const key = anthropicKey();
