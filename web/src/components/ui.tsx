@@ -1,4 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { usePaleta } from "../lib/paleta";
 import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -12,6 +13,24 @@ export const dec = (n: number | null | undefined, d = 1) => (n == null || !isFin
 export const fecha = (s: string | null | undefined) => (s ? `${+s.slice(8, 10)}/${+s.slice(5, 7)}` : "—");
 export const dias = (n: number | null | undefined) => (n == null ? "—" : n === 0 ? "mismo día" : `${dec(n, n % 1 ? 1 : 0)} d`);
 export const fmtKind = (k: "n" | "p" | "m", v: number | null) => (k === "p" ? pct(v) : k === "m" ? money(v) : num(v));
+
+// ───────── Cada tipo de dato se ve siempre igual (14-11) ─────────
+// n = cantidad (tono fuerte de la pestaña) · p = porcentaje (número + mini barra) · m = dinero (negrita, con $) · avg = promedio (⌀ + "prom.")
+export type TipoDato = "n" | "p" | "m" | "avg";
+export function Valor({ k, v, txt }: { k: TipoDato; v: number | null | undefined; txt?: string }) {
+  if (k === "p") {
+    const ok = v != null && isFinite(v);
+    return (
+      <span className="v-p">
+        <span className="mini"><span style={{ width: `${ok ? Math.max(0, Math.min(100, v! * 100)) : 0}%` }} /></span>
+        {txt ?? pct(v)}
+      </span>
+    );
+  }
+  if (k === "avg") return <span className="v-avg" title="promedio"><span className="ic">⌀</span>{txt ?? money(v)}<span className="et">prom.</span></span>;
+  if (k === "m") return <span className="v-m">{txt ?? money(v)}</span>;
+  return <span className="v-n">{txt ?? num(v)}</span>;
+}
 export const ghlContacto = (id: string | null | undefined) => (id && !id.startsWith("hoja-") ? `https://app.gohighlevel.com/v2/location/fssMXOOdUdCpuTFkSTGc/contacts/detail/${id}` : null);
 
 // ───────── Controles ─────────
@@ -25,12 +44,13 @@ export function Seg<T extends string>({ value, options, onChange, label, classNa
   );
 }
 
-export function Kpi({ label, value, sub, delta, onClick, tone }: { label: string; value: ReactNode; sub?: ReactNode; delta?: { txt: string; cls: string }; onClick?: () => void; tone?: string }) {
+export function Kpi({ label, value, sub, delta, onClick, tone, k = "n", ratio }: { label: string; value: ReactNode; sub?: ReactNode; delta?: { txt: string; cls: string }; onClick?: () => void; tone?: string; k?: TipoDato; ratio?: number | null }) {
   const El = onClick ? "button" : "div";
   return (
-    <El className={`kpi2 ${onClick ? "clic" : ""} ${tone ?? ""}`} onClick={onClick}>
-      <div className="kpi2-label">{label}</div>
-      <div className="kpi2-value">{value}{delta && delta.txt !== "—" && <span className={`vs ${delta.cls}`}>{delta.txt}</span>}</div>
+    <El className={`kpi2 k-${k} ${onClick ? "clic" : ""} ${tone ?? ""}`} onClick={onClick}>
+      <div className="kpi2-label">{label}{k === "avg" && <span className="et"> · prom.</span>}</div>
+      <div className="kpi2-value">{k === "avg" && <span className="ic">⌀</span>}{value}{delta && delta.txt !== "—" && <span className={`vs ${delta.cls}`}>{delta.txt}</span>}</div>
+      {k === "p" && ratio != null && isFinite(ratio) && <div className="kpi2-barra"><span style={{ width: `${Math.max(0, Math.min(100, ratio * 100))}%` }} /></div>}
       {sub && <div className="kpi2-sub">{sub}</div>}
     </El>
   );
@@ -54,8 +74,8 @@ export function Panel({ titulo, extra, children, className = "", fuente }: { tit
 
 // ───────── Tabla con buscador, paginado y scroll interno ─────────
 export interface Col<R> { k: string; label: string; get: (r: R) => ReactNode; csv?: (r: R) => string | number | null; align?: "l" | "r"; cls?: (r: R) => string }
-export function Tabla<R>({ rows, cols, porPagina = 10, buscar, csv, vacio, rowCls, onRow }: {
-  rows: R[]; cols: Col<R>[]; porPagina?: number; buscar?: (r: R) => string; csv?: string; vacio?: string; rowCls?: (r: R) => string; onRow?: (r: R) => void;
+export function Tabla<R>({ rows, cols, porPagina = 10, buscar, csv, vacio, rowCls, onRow, rowStyle }: {
+  rows: R[]; cols: Col<R>[]; porPagina?: number; buscar?: (r: R) => string; csv?: string; vacio?: string; rowCls?: (r: R) => string; onRow?: (r: R) => void; rowStyle?: (r: R) => CSSProperties;
 }) {
   const [q, setQ] = useState("");
   const [pag, setPag] = useState(0);
@@ -82,7 +102,7 @@ export function Tabla<R>({ rows, cols, porPagina = 10, buscar, csv, vacio, rowCl
           <thead><tr>{cols.map((c) => <th key={c.k} className={c.align === "l" ? "l" : ""}>{c.label}</th>)}</tr></thead>
           <tbody>
             {vis.map((r, i) => (
-              <tr key={i} className={`${rowCls?.(r) ?? ""} ${onRow ? "clic" : ""}`} onClick={onRow ? () => onRow(r) : undefined}>
+              <tr key={i} className={`${rowCls?.(r) ?? ""} ${onRow ? "clic" : ""}`} style={rowStyle?.(r)} onClick={onRow ? () => onRow(r) : undefined}>
                 {cols.map((c) => <td key={c.k} className={`${c.align === "l" ? "l" : ""} ${c.cls?.(r) ?? ""}`}>{c.get(r)}</td>)}
               </tr>
             ))}
@@ -111,14 +131,18 @@ function exportarCSV<R>(nombre: string, cols: Col<R>[], rows: R[]) {
 const textoPlano = (n: ReactNode): string => (n == null || typeof n === "boolean" ? "" : typeof n === "string" || typeof n === "number" ? String(n) : "");
 
 // ───────── Gráficos (Recharts) ─────────
-// Colores: DFY = slot 1 (azul), JessiK = slot 2 (naranja); una sola serie = neutro. Paleta validada (skill dataviz).
-export const C = { dfy: "var(--dfy)", jessik: "var(--jessik)", s1: "var(--series-1)", s2: "var(--series-2)", s3: "var(--series-3)", neutro: "var(--neutro)" };
+// Colores (14-11): todo en tonos del color de la pestaña activa (lib/paleta.ts). "tono:N" = paso N de la escala (0 oscuro … 5 claro).
+// Series contiguas usan pasos separados (oscuro / base / claro) para que se distingan.
+export const C = { dfy: "tono:1", jessik: "tono:4", s1: "tono:2", s2: "tono:4", s3: "tono:0", neutro: "tono:3" };
+export const tono = (n: number) => `tono:${n}`;
+const useColor = () => { const e = usePaleta(); return (c: string) => (c.startsWith("tono:") ? e[Number(c.slice(5))] : c); };
 const ejes = { stroke: "var(--axis)", tick: { fill: "var(--muted)", fontSize: 11 }, tickLine: false, axisLine: false };
 const tt = { contentStyle: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }, labelStyle: { color: "var(--text)" }, itemStyle: { color: "var(--text-2)" }, cursor: { fill: "var(--surface-2)" } };
 export interface Serie { key: string; label: string; color: string; stack?: string }
 type Fmt = (n: number) => string;
 
 export function Barras({ data, x, series, fmt = num, alto = "100%", horizontal = false }: { data: Record<string, unknown>[]; x: string; series: Serie[]; fmt?: Fmt; alto?: number | string; horizontal?: boolean }) {
+  const col = useColor();
   if (!data.length || data.every((d) => series.every((s) => !Number(d[s.key])))) return <Vacio />;
   return (
     <ResponsiveContainer width="100%" height={alto as number}>
@@ -128,13 +152,14 @@ export function Barras({ data, x, series, fmt = num, alto = "100%", horizontal =
           : <><XAxis dataKey={x} {...ejes} /><YAxis {...ejes} tickFormatter={fmt} width={56} /></>}
         <Tooltip {...tt} formatter={(v: number, n: string) => [fmt(v), n]} />
         {series.length > 1 && <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-2)" }} iconType="circle" iconSize={8} />}
-        {series.map((s) => <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} stackId={s.stack} radius={s.stack ? 0 : horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]} maxBarSize={36} />)}
+        {series.map((s) => <Bar key={s.key} dataKey={s.key} name={s.label} fill={col(s.color)} stackId={s.stack} radius={s.stack ? 0 : horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]} maxBarSize={36} />)}
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
 export function Lineas({ data, x, series, fmt = pct, alto = "100%" }: { data: Record<string, unknown>[]; x: string; series: Serie[]; fmt?: Fmt; alto?: number | string }) {
+  const col = useColor();
   if (!data.length || data.every((d) => series.every((s) => d[s.key] == null))) return <Vacio />;
   return (
     <ResponsiveContainer width="100%" height={alto as number}>
@@ -144,7 +169,7 @@ export function Lineas({ data, x, series, fmt = pct, alto = "100%" }: { data: Re
         <YAxis {...ejes} tickFormatter={fmt} width={48} />
         <Tooltip {...tt} cursor={{ stroke: "var(--axis)" }} formatter={(v: number, n: string) => [fmt(v), n]} />
         {series.length > 1 && <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-2)" }} iconType="circle" iconSize={8} />}
-        {series.map((s) => <Line key={s.key} dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={2} dot={{ r: 4, strokeWidth: 2, fill: "var(--surface)" }} activeDot={{ r: 5 }} connectNulls />)}
+        {series.map((s) => <Line key={s.key} dataKey={s.key} name={s.label} stroke={col(s.color)} strokeWidth={2} dot={{ r: 4, strokeWidth: 2, fill: "var(--surface)" }} activeDot={{ r: 5 }} connectNulls />)}
       </LineChart>
     </ResponsiveContainer>
   );

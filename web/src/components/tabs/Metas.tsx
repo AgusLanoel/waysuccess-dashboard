@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { closers, metas, prorratear, type DashDatos, type Filtros } from "../../lib/metricas";
-import { Barras, C, Kpi, Panel, Progreso, dec, fmtKind, num, pct } from "../ui";
+import { Barras, C, Kpi, Panel, Progreso, Valor, dec, fmtKind, num, pct } from "../ui";
 
 export function Metas({ d, f, from, to }: { d: DashDatos; f: Filtros; from: string; to: string }) {
   const [verPlan, setVerPlan] = useState(false);
@@ -14,7 +14,7 @@ export function Metas({ d, f, from, to }: { d: DashDatos; f: Filtros; from: stri
   return (
     <div className="tab-col">
       <div className="kpis5">
-        <Kpi label="Alineación con la proyección" value={pct(m.alineacion)} sub="cierres reales ÷ proyectados a la fecha" />
+        <Kpi k="p" ratio={m.alineacion} label="Alineación con la proyección" value={pct(m.alineacion)} sub="cierres reales ÷ proyectados a la fecha" />
         <Kpi label="Días transcurridos" value={`${m.pasados} / ${m.total}`} />
         <Kpi label="Estado" value={<span className={`semaforo ${semaforo}`}>{m.estado}</span>} />
       </div>
@@ -30,8 +30,8 @@ export function Metas({ d, f, from, to }: { d: DashDatos; f: Filtros; from: stri
                   return (
                     <tr key={x.label}>
                       <td className="l">{x.label}</td>
-                      <td>{fmtKind(x.kind, x.actual)}</td>
-                      <td>{x.meta == null ? "—" : x.kind === "n" ? dec(x.meta, 0) : fmtKind(x.kind, x.meta)}</td>
+                      <td><Valor k={x.label === "Ticket promedio" ? "avg" : x.kind} v={x.actual} /></td>
+                      <td>{x.meta == null ? "—" : <Valor k={x.label === "Ticket promedio" ? "avg" : x.kind} v={x.meta} txt={x.kind === "n" ? dec(x.meta, 0) : undefined} />}</td>
                       <td className={dif == null ? "" : dif >= 0 ? "up" : "down"}>{dif == null ? "—" : x.kind === "p" ? `${dif >= 0 ? "+" : ""}${Math.round(dif * 100)} pp` : `${dif > 0 ? "+" : ""}${fmtKind(x.kind, dif)}`}</td>
                       <td className="l"><Progreso v={log} /></td>
                     </tr>

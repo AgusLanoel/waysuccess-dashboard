@@ -159,3 +159,70 @@ table.t2 td.estado-hoy { color: var(--warn); font-weight: 600; }
 /* Aviso de versión nueva */
 .aviso-version { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; box-shadow: 0 6px 24px rgb(0 0 0 / 0.18); font-size: 13px; }
 .aviso-version .primary { padding: 5px 12px; }
+
+/* ═══════════ 14-11 (2): un color por pestaña + filtros en un botón ═══════════
+   --acc-0 … --acc-5 = escala del color de la pestaña activa (lib/paleta.ts, una sola definición).
+   Texto en tonos 3–5 (contraste ≥ 6,6:1 sobre el fondo oscuro). Rojo/ámbar/verde solo para estados y variaciones. */
+.app { --acc-texto: var(--acc-3); --acc-suave: color-mix(in srgb, var(--acc-2) 16%, var(--surface)); }
+
+/* Pestañas: punto de su color; la activa con fondo y subrayado de su color */
+.pestanas button { display: inline-flex; align-items: center; gap: 6px; border-bottom: 2px solid transparent; border-radius: 7px 7px 0 0; }
+.pestanas .punto { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
+.pestanas button.on { background: color-mix(in srgb, var(--c) 22%, var(--surface)); color: var(--c-claro); border-bottom-color: var(--c); }
+.pestanas button:hover:not(.on) { color: var(--c-claro); }
+
+/* Barra de controles en UNA fila */
+.barra-2 { flex-wrap: nowrap; }
+.barra-2 .seg button.on, .popover .seg button.on { background: color-mix(in srgb, var(--acc-2) 30%, var(--surface)); color: var(--acc-5); }
+.ancla { position: relative; display: inline-flex; }
+.btn-filtros { font: inherit; font-size: 12px; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 5px 12px; cursor: pointer; }
+.btn-filtros.on { color: var(--acc-5); border-color: var(--acc-2); background: var(--acc-suave); font-weight: 600; }
+.chips { display: inline-flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; min-width: 0; }
+.chips .chip-filtro { border-color: var(--acc-1); color: var(--acc-5); background: var(--acc-suave); white-space: nowrap; }
+.cerrar-pop { position: fixed; inset: 0; z-index: 25; }
+.popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--acc-2); border-radius: 12px; padding: 12px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.35); display: grid; gap: 10px; min-width: 320px; }
+.popover .atajos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.popover .atajos button { font: inherit; font-size: 12px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); cursor: pointer; }
+.popover .atajos button.on { border-color: var(--acc-2); color: var(--acc-5); background: var(--acc-suave); font-weight: 600; }
+.popover .rango { display: flex; gap: 10px; }
+.popover .rango label { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); }
+.popover .rango input { font: inherit; font-size: 12px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 4px 6px; color-scheme: dark; }
+.pop-acciones { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+.pop-acciones .primary { background: var(--acc-2); color: #0b0b0b; border: 0; border-radius: 8px; padding: 6px 14px; font-weight: 600; cursor: pointer; }
+.filtro-fila { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.filtro-fila .seg { flex-wrap: wrap; }
+
+/* Paneles y tarjetas: borde y título en el color de la pestaña */
+.panel { border-top: 3px solid var(--acc-2); }
+.panel-head h2 { color: var(--acc-4); }
+.kpi2 { border-left: 3px solid var(--acc-2); background: linear-gradient(180deg, var(--acc-suave), var(--surface) 70%); }
+.seg-grande button.on { background: color-mix(in srgb, var(--acc-2) 30%, var(--surface)); color: var(--acc-5); }
+table.t2 th { color: var(--acc-4); }
+table.t2 tbody tr:hover td { background: var(--acc-suave); }
+
+/* Cada tipo de dato se ve igual en todas las pestañas */
+.v-n, .kpi2.k-n .kpi2-value { color: var(--acc-texto); font-weight: 700; }
+.kpi2.k-n .kpi2-value { font-size: 24px; }
+.v-m, .kpi2.k-m .kpi2-value { font-weight: 700; color: var(--text); }
+.v-p { display: inline-flex; align-items: center; gap: 6px; }
+.v-p .mini { width: 34px; height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; display: inline-block; }
+.v-p .mini span { display: block; height: 100%; background: var(--acc-4); border-radius: 3px; }
+.kpi2-barra { height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; margin: 4px 0 2px; }
+.kpi2-barra span { display: block; height: 100%; background: var(--acc-4); }
+.v-avg, .kpi2.k-avg .kpi2-value { color: var(--acc-4); font-weight: 600; }
+.v-avg { display: inline-flex; align-items: baseline; gap: 3px; }
+.ic { opacity: 0.85; margin-right: 2px; font-weight: 400; }
+.et { font-size: 10.5px; color: var(--muted); font-weight: 400; margin-left: 3px; }
+
+/* Producto y closer: su tono fijo dentro del color de la pestaña */
+.chip-dfy { color: var(--acc-3); background: color-mix(in srgb, var(--acc-1) 35%, transparent); }
+.chip-jessik { color: var(--acc-5); background: color-mix(in srgb, var(--acc-4) 18%, transparent); }
+.closer-tono { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: var(--tono); }
+.closer-tono::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--tono); }
+tr.fila-closer td:first-child { box-shadow: inset 3px 0 0 var(--tono); }
+
+/* Alertas: siempre rojo / ámbar */
+table.t2 td.estado-vencido, table.t2 td.estado-sin-fecha { color: #f87171; }
+table.t2 td.estado-hoy { color: #fbbf24; }
+.vs.up, td.up { color: #4ade80; }
+.vs.down, td.down { color: #f87171; }

@@ -44,8 +44,8 @@ function Embudo({ d, f, from, to }: { d: DashDatos; f: Filtros; from: string; to
   return (
     <>
       <div className="kpis6">
-        <Kpi label="Ciclo total" value={diasTxt(c.todos.total.mediana)} sub={`mediana · ${c.todos.total.n} cierres`} />
-        {TRAMOS.map((n, i) => <Kpi key={n} label={i === 0 ? "Primer contacto (anuncio) → agenda" : n} value={diasTxt(t[i].mediana)} sub={`mediana · ${t[i].n} leads`} />)}
+        <Kpi k="avg" label="Ciclo total" value={diasTxt(c.todos.total.mediana)} sub={`mediana · ${c.todos.total.n} cierres`} />
+        {TRAMOS.map((n, i) => <Kpi k="avg" key={n} label={i === 0 ? "Primer contacto (anuncio) → agenda" : n} value={diasTxt(t[i].mediana)} sub={`mediana · ${t[i].n} leads`} />)}
         <Kpi label="PIF" value={p.pifs ? `1 cada ${dec(p.porCierres)} cierres` : "Sin PIF en el período"} sub={p.pifs ? `1 cada ${dec(p.porLeads)} leads · ${pct(p.pctPif)} PIF` : undefined} />
       </div>
       <div className="fila-60-40">
@@ -151,10 +151,10 @@ function LlamadaPago({ d, f, from, to, pf, setPf, outliers, setOutliers }: { d: 
         <label className="check derecha"><input type="checkbox" checked={outliers} onChange={(e) => setOutliers(e.target.checked)} /> Excluir outliers (&gt; 30 días){r.outliers ? ` · ${r.outliers}` : ""}</label>
       </div>
       <div className="kpis5">
-        <Kpi label="% en llamada" value={pct(r.pctLlamada)} sub={`${r.enLlamada} cierres el mismo día`} />
-        <Kpi label="% en seguimiento" value={pct(r.pctSeguimiento)} sub={`${r.enSeguimiento} cierres`} />
-        <Kpi label="Días promedio en seguimiento" value={r.promSeguimiento == null ? "—" : dec(r.promSeguimiento)} sub={`mediana ${r.medianaSeguimiento == null ? "—" : dec(r.medianaSeguimiento)}`} />
-        <Kpi label="Días promedio total" value={r.promTotal == null ? "—" : dec(r.promTotal)} sub={`${r.cierres} cierres medidos`} />
+        <Kpi k="p" ratio={r.pctLlamada} label="% en llamada" value={pct(r.pctLlamada)} sub={`${r.enLlamada} cierres el mismo día`} />
+        <Kpi k="p" ratio={r.pctSeguimiento} label="% en seguimiento" value={pct(r.pctSeguimiento)} sub={`${r.enSeguimiento} cierres`} />
+        <Kpi k="avg" label="Días promedio en seguimiento" value={r.promSeguimiento == null ? "—" : dec(r.promSeguimiento)} sub={`mediana ${r.medianaSeguimiento == null ? "—" : dec(r.medianaSeguimiento)}`} />
+        <Kpi k="avg" label="Días promedio total" value={r.promTotal == null ? "—" : dec(r.promTotal)} sub={`${r.cierres} cierres medidos`} />
         <Kpi label="Sin fecha de pago" value={num(r.sinFecha.length)} sub={soloSinFecha ? "Mostrando solo estos ✕" : "Tocá para ver cuáles"} tone={r.sinFecha.length ? "alerta" : ""} onClick={() => setSoloSinFecha(!soloSinFecha)} />
       </div>
       <div className="fila-60-40 media">

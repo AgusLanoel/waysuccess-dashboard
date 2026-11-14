@@ -21,11 +21,11 @@ export function Cobranza({ d, f, from, to }: { d: DashDatos; f: Filtros; from: s
   return (
     <div className="tab-col">
       <div className="kpis5">
-        <Kpi label="Cobrado" value={money(c.b.cobrado)} sub="de cierres del período" delta={variacion("m", c.b.cobrado, c.bAnt?.cobrado ?? null)} />
-        <Kpi label="Cobrado en seguimiento" value={money(c.b.cobrado_seguimiento)} sub="fuente: Tracker" delta={variacion("m", c.b.cobrado_seguimiento, c.bAnt?.cobrado_seguimiento ?? null)} />
-        <Kpi label="Cobrado total" value={money(c.b.cobrado_total)} delta={variacion("m", c.b.cobrado_total, c.bAnt?.cobrado_total ?? null)} />
-        <Kpi label="% Recolección" value={pct(der.pct_recoleccion)} sub="cobrado ÷ vendido" delta={variacion("p", der.pct_recoleccion, derAnt?.pct_recoleccion ?? null)} />
-        <Kpi label="Por cobrar" value={money(c.porCobrarTotal)} sub="vendido − cobrado de clientes desde el 01/10" />
+        <Kpi k="m" label="Cobrado" value={money(c.b.cobrado)} sub="de cierres del período" delta={variacion("m", c.b.cobrado, c.bAnt?.cobrado ?? null)} />
+        <Kpi k="m" label="Cobrado en seguimiento" value={money(c.b.cobrado_seguimiento)} sub="fuente: Tracker" delta={variacion("m", c.b.cobrado_seguimiento, c.bAnt?.cobrado_seguimiento ?? null)} />
+        <Kpi k="m" label="Cobrado total" value={money(c.b.cobrado_total)} delta={variacion("m", c.b.cobrado_total, c.bAnt?.cobrado_total ?? null)} />
+        <Kpi k="p" ratio={der.pct_recoleccion} label="% Recolección" value={pct(der.pct_recoleccion)} sub="cobrado ÷ vendido" delta={variacion("p", der.pct_recoleccion, derAnt?.pct_recoleccion ?? null)} />
+        <Kpi k="m" label="Por cobrar" value={money(c.porCobrarTotal)} sub="vendido − cobrado de clientes desde el 01/10" />
       </div>
       <div className="fila2 media">
         <Panel titulo="Cobrado por semana"><div className="grafico"><Barras data={c.semanal} x="label" fmt={money} series={[{ key: "cobrado", label: "Cobrado de cierres", color: C.s1, stack: "a" }, { key: "seguimiento", label: "Cobrado en seguimiento", color: C.s3, stack: "a" }]} /></div></Panel>

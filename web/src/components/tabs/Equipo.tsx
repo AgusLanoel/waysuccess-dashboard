@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { closers, objetivos, type DashDatos, type Filtros } from "../../lib/metricas";
-import { ChipProd, Kpi, Panel, Seg, Tabla, dec, ghlContacto, money, num, pct } from "../ui";
+import { ChipProd, Kpi, Panel, Seg, Tabla, Valor, dec, ghlContacto, num, pct } from "../ui";
+import { TONO_CLOSER, usePaleta } from "../../lib/paleta";
+import type { CSSProperties } from "react";
 
 type Vista = "closers" | "setters";
 export function Equipo({ d, f, from, to, reloadKey, irASeguimientos }: { d: DashDatos; f: Filtros; from: string; to: string; reloadKey: number; irASeguimientos: (closer: string) => void }) {
@@ -17,6 +19,9 @@ export function Equipo({ d, f, from, to, reloadKey, irASeguimientos }: { d: Dash
 function Closers({ d, f, from, to, irASeguimientos }: { d: DashDatos; f: Filtros; from: string; to: string; irASeguimientos: (c: string) => void }) {
   const filas = useMemo(() => closers(d, f, from, to), [d, f, from, to]);
   const obj = objetivos(d);
+  const tonos = usePaleta();
+  // Cada closer con su tono del violeta de Equipo (Luca oscuro, Jenny medio, Mileces lila, Ale lavanda)
+  const tonoDe = (c: string) => ({ "--tono": tonos[TONO_CLOSER[c] ?? 3] }) as CSSProperties;
   const r = (a: number, b: number) => (b > 0 ? a / b : null);
   const ok = (v: number | null, meta: number) => (v != null && v >= meta ? "en-meta" : "");
   return (
@@ -24,24 +29,26 @@ function Closers({ d, f, from, to, irASeguimientos }: { d: DashDatos; f: Filtros
       <Tabla
         rows={filas}
         porPagina={12}
+        rowCls={() => "fila-closer"}
+        rowStyle={(x) => tonoDe(x.closer)}
         cols={[
-          { k: "c", label: "Closer", align: "l", get: (x) => <b>{x.closer}</b> },
-          { k: "ll", label: "Llamadas", get: (x) => num(x.llamadas) },
-          { k: "as", label: "Asistencias", get: (x) => num(x.asistencias) },
-          { k: "pa", label: "% Asist.", get: (x) => pct(r(x.asistencias, x.agendas)), cls: (x) => ok(r(x.asistencias, x.agendas), obj.pct_asistencia) },
-          { k: "of", label: "Ofertas", get: (x) => num(x.ofertas) },
-          { k: "po", label: "% Oferta", get: (x) => pct(r(x.ofertas, x.asistencias)), cls: (x) => ok(r(x.ofertas, x.asistencias), obj.pct_oferta) },
-          { k: "ci", label: "Cierres", get: (x) => num(x.cierres) },
-          { k: "cs", label: "Cierres en seg.", get: (x) => num(x.cierres_seguimiento) },
-          { k: "ct", label: "Cierres totales", get: (x) => num(x.cierres_totales) },
-          { k: "pc", label: "% Cierre", get: (x) => pct(r(x.cierres_totales, x.asistencias)), cls: (x) => ok(r(x.cierres_totales, x.asistencias), obj.pct_cierre) },
-          { k: "v", label: "Vendido", get: (x) => money(x.vendido) },
-          { k: "co", label: "Cobrado", get: (x) => money(x.cobrado) },
-          { k: "cseg", label: "Cobrado en seg.", get: (x) => money(x.cobrado_seguimiento) },
-          { k: "ctot", label: "Cobrado total", get: (x) => money(x.cobrado_total) },
-          { k: "com", label: "Comisión", get: (x) => money(x.comisiones) },
-          { k: "m", label: "Meta cierres", get: (x) => (x.meta_cierres == null ? "—" : dec(x.meta_cierres)) },
-          { k: "pm", label: "% Meta", get: (x) => pct(x.pct_meta), cls: (x) => ok(x.pct_meta, 1) },
+          { k: "c", label: "Closer", align: "l", get: (x) => <span className="closer-tono">{x.closer}</span> },
+          { k: "ll", label: "Llamadas", get: (x) => <Valor k="n" v={x.llamadas} /> },
+          { k: "as", label: "Asistencias", get: (x) => <Valor k="n" v={x.asistencias} /> },
+          { k: "pa", label: "% Asist.", get: (x) => <Valor k="p" v={r(x.asistencias, x.agendas)} />, cls: (x) => ok(r(x.asistencias, x.agendas), obj.pct_asistencia) },
+          { k: "of", label: "Ofertas", get: (x) => <Valor k="n" v={x.ofertas} /> },
+          { k: "po", label: "% Oferta", get: (x) => <Valor k="p" v={r(x.ofertas, x.asistencias)} />, cls: (x) => ok(r(x.ofertas, x.asistencias), obj.pct_oferta) },
+          { k: "ci", label: "Cierres", get: (x) => <Valor k="n" v={x.cierres} /> },
+          { k: "cs", label: "Cierres en seg.", get: (x) => <Valor k="n" v={x.cierres_seguimiento} /> },
+          { k: "ct", label: "Cierres totales", get: (x) => <Valor k="n" v={x.cierres_totales} /> },
+          { k: "pc", label: "% Cierre", get: (x) => <Valor k="p" v={r(x.cierres_totales, x.asistencias)} />, cls: (x) => ok(r(x.cierres_totales, x.asistencias), obj.pct_cierre) },
+          { k: "v", label: "Vendido", get: (x) => <Valor k="m" v={x.vendido} /> },
+          { k: "co", label: "Cobrado", get: (x) => <Valor k="m" v={x.cobrado} /> },
+          { k: "cseg", label: "Cobrado en seg.", get: (x) => <Valor k="m" v={x.cobrado_seguimiento} /> },
+          { k: "ctot", label: "Cobrado total", get: (x) => <Valor k="m" v={x.cobrado_total} /> },
+          { k: "com", label: "Comisión", get: (x) => <Valor k="m" v={x.comisiones} /> },
+          { k: "m", label: "Meta cierres", get: (x) => (x.meta_cierres == null ? "—" : <Valor k="n" v={x.meta_cierres} txt={dec(x.meta_cierres)} />) },
+          { k: "pm", label: "% Meta", get: (x) => <Valor k="p" v={x.pct_meta} />, cls: (x) => ok(x.pct_meta, 1) },
           { k: "sa", label: "Seguimientos", get: (x) => <button className="link" onClick={() => irASeguimientos(x.closer)}>{num(x.seguimientos_abiertos)} →</button> },
         ]}
         vacio="Ningún closer con actividad en el período"
@@ -71,20 +78,20 @@ function Setters({ from, to, reloadKey, f }: { from: string; to: string; reloadK
   const pend = datos.pendientes.filter((p) => (f.closer === "Todos" || p.closer === f.closer) && (f.tier === "Todos" || p.tier === f.tier) && (f.producto === "Todos" || p.producto === f.producto));
   const colsGrupo = (titulo: string) => [
     { k: "k", label: titulo, align: "l" as const, get: (x: FilaSetter) => x.clave },
-    { k: "a", label: "Agendas", get: (x: FilaSetter) => num(x.agendas) },
-    { k: "c", label: "Contactadas", get: (x: FilaSetter) => num(x.contactadas) },
-    { k: "ca", label: "% antes de la llamada", get: (x: FilaSetter) => pct(show(x.contactadas_antes, x.agendas)) },
-    { k: "t", label: "Tiempo (mediana)", get: (x: FilaSetter) => horas(x.mediana_min) },
-    { k: "s", label: "Show rate", get: (x: FilaSetter) => pct(show(x.asist_contactadas + x.asist_no_contactadas, x.pasadas_contactadas + x.pasadas_no_contactadas)) },
+    { k: "a", label: "Agendas", get: (x: FilaSetter) => <Valor k="n" v={x.agendas} /> },
+    { k: "c", label: "Contactadas", get: (x: FilaSetter) => <Valor k="n" v={x.contactadas} /> },
+    { k: "ca", label: "% antes de la llamada", get: (x: FilaSetter) => <Valor k="p" v={show(x.contactadas_antes, x.agendas)} /> },
+    { k: "t", label: "Tiempo (mediana)", get: (x: FilaSetter) => <Valor k="avg" v={x.mediana_min} txt={horas(x.mediana_min)} /> },
+    { k: "s", label: "Show rate", get: (x: FilaSetter) => <Valor k="p" v={show(x.asist_contactadas + x.asist_no_contactadas, x.pasadas_contactadas + x.pasadas_no_contactadas)} /> },
   ];
   return (
     <>
       <div className="kpis5">
-        <Kpi label="Sin contactar ahora" value={num(pend.length)} />
-        <Kpi label="% contactadas" value={pct(tot ? show(tot.contactadas, tot.agendas) : null)} sub={tot ? `${tot.contactadas} de ${tot.agendas} agendas` : undefined} />
-        <Kpi label="% antes de la llamada" value={pct(tot ? show(tot.contactadas_antes, tot.agendas) : null)} />
-        <Kpi label="Tiempo hasta el contacto" value={horas(tot?.mediana_min ?? null)} sub="mediana" />
-        <Kpi label="Show rate contactadas" value={pct(tot ? show(tot.asist_contactadas, tot.pasadas_contactadas) : null)} sub={`sin contactar: ${pct(tot ? show(tot.asist_no_contactadas, tot.pasadas_no_contactadas) : null)}`} />
+        <Kpi label="Sin contactar ahora" value={num(pend.length)} tone={pend.length ? "alerta" : ""} />
+        <Kpi k="p" ratio={tot ? show(tot.contactadas, tot.agendas) : null} label="% contactadas" value={pct(tot ? show(tot.contactadas, tot.agendas) : null)} sub={tot ? `${tot.contactadas} de ${tot.agendas} agendas` : undefined} />
+        <Kpi k="p" ratio={tot ? show(tot.contactadas_antes, tot.agendas) : null} label="% antes de la llamada" value={pct(tot ? show(tot.contactadas_antes, tot.agendas) : null)} />
+        <Kpi k="avg" label="Tiempo hasta el contacto" value={horas(tot?.mediana_min ?? null)} sub="mediana" />
+        <Kpi k="p" ratio={tot ? show(tot.asist_contactadas, tot.pasadas_contactadas) : null} label="Show rate contactadas" value={pct(tot ? show(tot.asist_contactadas, tot.pasadas_contactadas) : null)} sub={`sin contactar: ${pct(tot ? show(tot.asist_no_contactadas, tot.pasadas_no_contactadas) : null)}`} />
       </div>
       <div className="fila2">
         <Panel titulo="Por setter"><Tabla rows={datos.filas.filter((x) => x.grupo === "setter")} cols={colsGrupo("Setter")} /></Panel>

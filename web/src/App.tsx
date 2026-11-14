@@ -4,6 +4,7 @@ import { supabase } from "./lib/supabase";
 import { iso, addDays } from "./lib/format";
 import { EXCLUIR_OUTLIERS_POR_DEFECTO, FECHA_INICIO_DATOS, FILTROS_VACIOS, opcionesFiltros, type DashDatos, type Filtros, type FiltrosPago } from "./lib/metricas";
 import { Seg } from "./components/ui";
+import { BASE, PaletaContext, escala, varsPestana } from "./lib/paleta";
 import { Resumen } from "./components/tabs/Resumen";
 import { Equipo } from "./components/tabs/Equipo";
 import { Seguimientos } from "./components/tabs/Seguimientos";
@@ -55,10 +56,10 @@ function Login() {
 
 // ───────── Período ─────────
 type Preset = "today" | "yesterday" | "7" | "14" | "30" | "month" | "lastmonth" | "all" | "custom";
-const PRESETS: [Preset, string][] = [
-  ["today", "Hoy"], ["yesterday", "Ayer"], ["7", "7 días"], ["14", "14 días"], ["30", "30 días"],
-  ["month", "Este mes"], ["lastmonth", "Mes pasado"], ["all", "Histórico"], ["custom", "Personalizado"],
-];
+// Atajos dentro de "Personalizado" (14-11: en la barra solo quedan Hoy · Ayer · Personalizado)
+const ATAJOS: [Preset, string][] = [["7", "7 días"], ["14", "14 días"], ["30", "30 días"], ["month", "Este mes"], ["lastmonth", "Mes pasado"], ["all", "Histórico"]];
+const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+const etiquetaPeriodo = (p: Preset, from: string, to: string) => ATAJOS.find(([k]) => k === p)?.[1] ?? `${dm(from)} – ${dm(to)}`;
 const clamp = (d: string) => (d < FECHA_INICIO_DATOS ? FECHA_INICIO_DATOS : d);
 function rangeFor(p: Preset): [string, string] {
   const t = new Date();
@@ -83,8 +84,8 @@ const SIN_PERIODO: Tab[] = ["hoy", "centro"];
 // ───────── Estado en la URL (filtros, pestaña y período se comparten con el enlace) ─────────
 function leerURL() {
   const q = new URLSearchParams(location.search);
-  const preset = (q.get("p") as Preset) || "month";
-  const [f0, t0] = rangeFor(preset === "custom" ? "month" : preset);
+  const preset = (q.get("p") as Preset) || "today"; // 14-11: por defecto Hoy
+  const [f0, t0] = rangeFor(preset === "custom" ? "today" : preset);
   let pf: FiltrosPago = {};
   try { pf = JSON.parse(q.get("mf") || "{}"); } catch { pf = {}; }
   const viejo: Record<string, Tab> = { comercial: "resumen", cierre: "hoy", midia: "hoy" };
@@ -116,6 +117,10 @@ export function Dashboard({ email }: { email: string }) {
   const [refreshing, setRefreshing] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const versionNueva = useVersionNueva();
+  const [panel, setPanel] = useState<null | "periodo" | "filtros">(null);
+  const [borrador, setBorrador] = useState<[string, string]>([from, to]);
+  useEffect(() => { if (panel === "periodo") setBorrador([from, to]); }, [panel]); // eslint-disable-line react-hooks/exhaustive-deps
+  const personalizado = preset !== "today" && preset !== "yesterday";
 
   // Datos crudos (una sola foto para todas las pestañas)
   useEffect(() => {
@@ -168,17 +173,24 @@ export function Dashboard({ email }: { email: string }) {
   }, []);
 
   const opts = d ? opcionesFiltros(d) : { closers: [], tiers: ["S", "A", "B", "C"], fuentes: ["Ads", "Orgánico", "Referidos", "Afiliados"] };
-  const hayFiltros = f.producto !== "Todos" || (!d?.closer_fijo && f.closer !== "Todos") || f.tier !== "Todos" || f.fuente !== "Todas";
+  // Filtros activos → contador del botón y chips con ✕
+  const activos: { k: keyof Filtros; label: string; vacio: string }[] = [
+    f.producto !== "Todos" ? { k: "producto" as const, label: `Producto: ${f.producto === "DFY" ? "DFY $30k" : "JessiK"}`, vacio: "Todos" } : null,
+    !d?.closer_fijo && f.closer !== "Todos" ? { k: "closer" as const, label: `Closer: ${f.closer}`, vacio: "Todos" } : null,
+    f.tier !== "Todos" ? { k: "tier" as const, label: `Tier: ${f.tier}`, vacio: "Todos" } : null,
+    f.fuente !== "Todas" ? { k: "fuente" as const, label: `Fuente: ${f.fuente}`, vacio: "Todas" } : null,
+  ].filter((x): x is { k: keyof Filtros; label: string; vacio: string } => !!x);
   const ultima = d?.sync?.ghl ? new Date(d.sync.ghl).toLocaleString("es", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
   const props = d ? { d, f: fEf, from, to } : null;
 
   return (
-    <div className="app">
+    <PaletaContext.Provider value={escala(BASE[tab])}>
+    <div className="app" data-tab={tab} style={varsPestana(tab) as React.CSSProperties}>
       <header className="barra">
         <div className="barra-1">
           <span className="brand">WaySuccess</span>
           <nav className="pestanas" role="tablist" aria-label="Sección">
-            {tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>)}
+            {tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} style={{ "--c": BASE[k], "--c-claro": escala(BASE[k])[3] } as React.CSSProperties} onClick={() => setTab(k)}><i className="punto" />{l}</button>)}
           </nav>
           <span className="barra-user">
             <span className="muted" title={`Tracker: ${d?.tracker.sincronizado ? new Date(d.tracker.sincronizado).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : "—"}`}>GHL {ultima}</span>
@@ -189,26 +201,55 @@ export function Dashboard({ email }: { email: string }) {
         </div>
         <div className="barra-2">
           {!SIN_PERIODO.includes(tab) && (
-            <>
-              <Seg label="Período" value={preset} onChange={setPreset} options={PRESETS} />
-              {preset === "custom" && (
-                <span className="dates">
-                  <input type="date" value={from} min={FECHA_INICIO_DATOS} max={to} onChange={(e) => setRange([clamp(e.target.value), to])} />
-                  <span className="muted">a</span>
-                  <input type="date" value={to} min={from} onChange={(e) => setRange([from, e.target.value])} />
-                </span>
+            <span className="ancla">
+              <span className="seg" role="tablist" aria-label="Período">
+                <button role="tab" aria-selected={preset === "today"} className={preset === "today" ? "on" : ""} onClick={() => { setPreset("today"); setPanel(null); }}>Hoy</button>
+                <button role="tab" aria-selected={preset === "yesterday"} className={preset === "yesterday" ? "on" : ""} onClick={() => { setPreset("yesterday"); setPanel(null); }}>Ayer</button>
+                <button role="tab" aria-selected={personalizado} className={personalizado ? "on" : ""} onClick={() => setPanel(panel === "periodo" ? null : "periodo")}>
+                  {personalizado ? etiquetaPeriodo(preset, from, to) : "Personalizado"} ▾
+                </button>
+              </span>
+              {panel === "periodo" && (
+                <div className="popover" role="dialog" aria-label="Elegir período">
+                  <div className="atajos">
+                    {ATAJOS.map(([p, l]) => <button key={p} className={preset === p ? "on" : ""} onClick={() => { setPreset(p); setPanel(null); }}>{l}</button>)}
+                  </div>
+                  <div className="rango">
+                    <label>Desde<input type="date" value={borrador[0]} min={FECHA_INICIO_DATOS} max={borrador[1]} onChange={(e) => setBorrador([e.target.value, borrador[1]])} /></label>
+                    <label>Hasta<input type="date" value={borrador[1]} min={borrador[0]} onChange={(e) => setBorrador([borrador[0], e.target.value])} /></label>
+                  </div>
+                  <div className="pop-acciones">
+                    <button className="link" onClick={() => setPanel(null)}>Cancelar</button>
+                    <button className="primary" onClick={() => { setPreset("custom"); setRange([clamp(borrador[0]), borrador[1] < borrador[0] ? borrador[0] : borrador[1]]); setPanel(null); }}>Aplicar</button>
+                  </div>
+                </div>
               )}
-            </>
+            </span>
           )}
-          <Seg label="Producto" className="seg-oferta" value={f.producto} onChange={(v) => setF({ ...f, producto: v })} options={[["Todos", "Todos"], ["DFY", "DFY $30k"], ["JessiK", "JessiK"]] as const} />
-          {!d?.closer_fijo && <Seg label="Closer" value={f.closer} onChange={(v) => setF({ ...f, closer: v })} options={[["Todos", "Todos"], ...opts.closers.map((c) => [c, c] as const)] as const} />}
-          <Seg label="Tier setter" value={f.tier} onChange={(v) => setF({ ...f, tier: v })} options={[["Todos", "Todos"], ...opts.tiers.map((t) => [t, t] as const)] as const} />
-          <select className="select" aria-label="Fuente" value={f.fuente} onChange={(e) => setF({ ...f, fuente: e.target.value })}>
-            <option value="Todas">Fuente: todas</option>
-            {opts.fuentes.map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
-          {hayFiltros && <button className="link" onClick={() => setF({ ...FILTROS_VACIOS, closer: d?.closer_fijo ?? "Todos" })}>Limpiar filtros</button>}
+          <span className="ancla">
+            <button className={`btn-filtros ${activos.length ? "on" : ""}`} onClick={() => setPanel(panel === "filtros" ? null : "filtros")}>
+              Filtros{activos.length ? ` · ${activos.length}` : ""} ▾
+            </button>
+            {panel === "filtros" && (
+              <div className="popover" role="dialog" aria-label="Filtros">
+                <div className="filtro-fila"><span>Producto</span><Seg label="Producto" className="seg-oferta" value={f.producto} onChange={(v) => setF({ ...f, producto: v })} options={[["Todos", "Todos"], ["DFY", "DFY $30k"], ["JessiK", "JessiK"]] as const} /></div>
+                {!d?.closer_fijo && <div className="filtro-fila"><span>Closer</span><Seg label="Closer" value={f.closer} onChange={(v) => setF({ ...f, closer: v })} options={[["Todos", "Todos"], ...opts.closers.map((c) => [c, c] as const)] as const} /></div>}
+                <div className="filtro-fila"><span>Tier</span><Seg label="Tier setter" value={f.tier} onChange={(v) => setF({ ...f, tier: v })} options={[["Todos", "Todos"], ...opts.tiers.map((t) => [t, t] as const)] as const} /></div>
+                <div className="filtro-fila"><span>Fuente</span><Seg label="Fuente" value={f.fuente} onChange={(v) => setF({ ...f, fuente: v })} options={[["Todas", "Todas"], ...opts.fuentes.map((x) => [x, x] as const)] as const} /></div>
+                <div className="pop-acciones">
+                  <button className="link" onClick={() => setF({ ...FILTROS_VACIOS, closer: d?.closer_fijo ?? "Todos" })}>Limpiar todo</button>
+                  <button className="primary" onClick={() => setPanel(null)}>Listo</button>
+                </div>
+              </div>
+            )}
+          </span>
+          {activos.length > 0 && (
+            <span className="chips">
+              {activos.map((a) => <span key={a.k} className="chip-filtro">{a.label}<button aria-label={`Quitar ${a.label}`} onClick={() => setF({ ...f, [a.k]: a.vacio })}>✕</button></span>)}
+            </span>
+          )}
         </div>
+        {panel && <div className="cerrar-pop" onClick={() => setPanel(null)} />}
       </header>
       {versionNueva && (
         <div className="aviso-version">
@@ -233,6 +274,7 @@ export function Dashboard({ email }: { email: string }) {
           : null}
       </main>
     </div>
+    </PaletaContext.Provider>
   );
 }
 

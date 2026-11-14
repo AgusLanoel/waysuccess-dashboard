@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { agendasPor, bloque, desglose, semanal, tasa, type DashDatos, type Filtros } from "../../lib/metricas";
-import { Barras, C, Lineas, Panel, Tabla, Vacio, money, num, pct } from "../ui";
+import { Barras, C, Lineas, Panel, Tabla, Vacio, Valor, money, num, pct } from "../ui";
 
 const OTROS = [
   ["g1", "Embudo"], ["g9", "% asistencias calificadas"], ["g10", "% ofertas realizadas"], ["g11", "Ticket promedio"], ["g12", "% agendas calificadas"],
@@ -25,16 +25,16 @@ export function Tendencias({ d, f, from, to }: { d: DashDatos; f: Filtros; from:
         <Panel titulo="Semanal">
           <Tabla rows={sem} porPagina={6} cols={[
             { k: "n", label: "Sem.", align: "l", get: (s) => `${s.n} · ${s.label}` },
-            { k: "a", label: "Agendas", get: (s) => num(s.agendas) },
-            { k: "pa", label: "% asist.", get: (s) => pct(s.pct_asistencia) },
-            { k: "ac", label: "Asist. calif.", get: (s) => num(s.asistencias_calificadas) },
-            { k: "o", label: "Ofertas", get: (s) => num(s.ofertas) },
-            { k: "c", label: "Cierres", get: (s) => num(s.cierres_totales) },
-            { k: "pc", label: "% cierre", get: (s) => pct(s.pct_cierre) },
-            { k: "t", label: "Ticket", get: (s) => money(s.ticket) },
-            { k: "v", label: "Vendido", get: (s) => money(s.vendido) },
-            { k: "co", label: "Cobrado", get: (s) => money(s.cobrado_total) },
-            { k: "pco", label: "% cobro", get: (s) => pct(tasa(s.cobrado, s.vendido)) },
+            { k: "a", label: "Agendas", get: (s) => <Valor k="n" v={s.agendas} /> },
+            { k: "pa", label: "% asist.", get: (s) => <Valor k="p" v={s.pct_asistencia} /> },
+            { k: "ac", label: "Asist. calif.", get: (s) => <Valor k="n" v={s.asistencias_calificadas} /> },
+            { k: "o", label: "Ofertas", get: (s) => <Valor k="n" v={s.ofertas} /> },
+            { k: "c", label: "Cierres", get: (s) => <Valor k="n" v={s.cierres_totales} /> },
+            { k: "pc", label: "% cierre", get: (s) => <Valor k="p" v={s.pct_cierre} /> },
+            { k: "t", label: "Ticket", get: (s) => <Valor k="avg" v={s.ticket} /> },
+            { k: "v", label: "Vendido", get: (s) => <Valor k="m" v={s.vendido} /> },
+            { k: "co", label: "Cobrado", get: (s) => <Valor k="m" v={s.cobrado_total} /> },
+            { k: "pco", label: "% cobro", get: (s) => <Valor k="p" v={tasa(s.cobrado, s.vendido)} /> },
           ]} />
         </Panel>
         <Panel className="lleno" titulo="Ver otro gráfico" extra={

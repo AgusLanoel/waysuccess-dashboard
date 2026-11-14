@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { FILAS_RESUMEN, FUENTES, bloque, leads, periodoAnterior, variacion, type Bloque, type DashDatos, type Filtros } from "../../lib/metricas";
-import { fmtKind, Panel } from "../ui";
+import { Panel, Valor } from "../ui";
 
 // Resumen = solo la "Vista empresa" (aprobada por Luca): Comercial + una columna por fuente, filas en el orden del Tracker.
 export function Resumen({ d, f, from, to }: { d: DashDatos; f: Filtros; from: string; to: string }) {
@@ -36,7 +36,7 @@ export function Resumen({ d, f, from, to }: { d: DashDatos; f: Filtros; from: st
                   const va = fila.get(c.a);
                   const v = variacion(fila.kind, va, c.b ? fila.get(c.b) : null);
                   return [
-                    <td key={c.g} className={c.g === "Comercial" ? "col-total" : ""}>{fmtKind(fila.kind, va)}</td>,
+                    <td key={c.g} className={c.g === "Comercial" ? "col-total" : ""}><Valor k={fila.label === "Ticket promedio" ? "avg" : fila.kind} v={va} /></td>,
                     ant && <td key={c.g + "v"} className={`vs ${v.cls}`}>{v.txt}</td>,
                   ];
                 })}
