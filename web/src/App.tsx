@@ -2,23 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
 import { iso, addDays } from "./lib/format";
-import { EXCLUIR_OUTLIERS_POR_DEFECTO, FECHA_INICIO_DATOS, FILTROS_VACIOS, opcionesFiltros, type DashDatos, type Filtros, type FiltrosPago } from "./lib/metricas";
+import { FECHA_INICIO_DATOS, FILTROS_VACIOS, opcionesFiltros, type DashDatos, type Filtros } from "./lib/metricas";
 import { Seg } from "./components/ui";
 import { BASE, PaletaContext, escala, varsPestana } from "./lib/paleta";
 import { Resumen } from "./components/tabs/Resumen";
 import { Equipo } from "./components/tabs/Equipo";
 import { Seguimientos } from "./components/tabs/Seguimientos";
 import { Metas } from "./components/tabs/Metas";
-import { Tendencias } from "./components/tabs/Tendencias";
-import { Ciclo } from "./components/tabs/Ciclo";
 import { Cobranza } from "./components/tabs/Cobranza";
-import { Hoy } from "./components/tabs/Hoy";
 import { Ads } from "./components/tabs/Ads";
 import { CentroComercial } from "./components/CentroComercial";
-import { Clientes } from "./components/tabs/Clientes";
-import { Numeros } from "./components/tabs/Numeros";
-import { Graficos } from "./components/tabs/Graficos";
-import { FILTROS_TAB_VACIOS, HISTORICO_CLIENTES, ctxTracker, opcionesTab, type FiltrosTab } from "./lib/metricasTracker";
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -61,7 +54,7 @@ function Login() {
 // ───────── Período ─────────
 type Preset = "today" | "yesterday" | "7" | "14" | "30" | "month" | "lastmonth" | "all" | "custom";
 // Atajos dentro de "Personalizado" (14-11: en la barra solo quedan Hoy · Ayer · Personalizado)
-const ATAJOS: [Preset, string][] = [["7", "7 días"], ["14", "14 días"], ["30", "30 días"], ["month", "Este mes"], ["lastmonth", "Mes pasado"], ["all", "Histórico"]];
+const ATAJOS: [Preset, string][] = [["7", "7 días"], ["14", "14 días"], ["30", "30 días"], ["month", "Este mes"], ["lastmonth", "Mes pasado"], ["all", "Oct + Nov"]];
 const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const etiquetaPeriodo = (p: Preset, from: string, to: string) => ATAJOS.find(([k]) => k === p)?.[1] ?? `${dm(from)} – ${dm(to)}`;
 const clamp = (d: string) => (d < FECHA_INICIO_DATOS ? FECHA_INICIO_DATOS : d);
@@ -78,21 +71,19 @@ function rangeFor(p: Preset): [string, string] {
 }
 
 // ───────── Pestañas ─────────
-type Tab = "resumen" | "equipo" | "seguimientos" | "metas" | "tendencias" | "ciclo" | "cobranza" | "clientes" | "numeros" | "graficos" | "hoy" | "ads" | "centro";
+// 16-11 (dueño): fuera Tendencias, Ciclo, Clientes, Números, Gráficos y Hoy (Hoy ya es un filtro de período)
+type Tab = "resumen" | "equipo" | "seguimientos" | "metas" | "cobranza" | "ads" | "centro";
 const TABS: [Tab, string][] = [
-  ["resumen", "Resumen"], ["equipo", "Equipo"], ["seguimientos", "Seguimientos"], ["metas", "Metas"], ["tendencias", "Tendencias"],
-  ["ciclo", "Ciclo"], ["cobranza", "Cobranza"], ["clientes", "Clientes"], ["numeros", "Números"], ["graficos", "Gráficos"], ["hoy", "Hoy"], ["ads", "Ads"], ["centro", "Centro comercial"],
+  ["resumen", "Resumen"], ["equipo", "Equipo"], ["seguimientos", "Seguimientos"], ["metas", "Metas"], ["cobranza", "Cobranza"], ["ads", "Ads"], ["centro", "Centro comercial"],
 ];
-const SIN_PERIODO: Tab[] = ["hoy", "centro"];
+const SIN_PERIODO: Tab[] = ["centro"];
 
 // ───────── Estado en la URL (filtros, pestaña y período se comparten con el enlace) ─────────
 function leerURL() {
   const q = new URLSearchParams(location.search);
   const preset = (q.get("p") as Preset) || "today"; // 14-11: por defecto Hoy
   const [f0, t0] = rangeFor(preset === "custom" ? "today" : preset);
-  let pf: FiltrosPago = {};
-  try { pf = JSON.parse(q.get("mf") || "{}"); } catch { pf = {}; }
-  const viejo: Record<string, Tab> = { comercial: "resumen", cierre: "hoy", midia: "hoy" };
+  const viejo: Record<string, Tab> = { comercial: "resumen" };
   const tabQ = q.get("tab") ?? "";
   return {
     tab: (viejo[tabQ] ?? (TABS.some(([k]) => k === tabQ) ? tabQ : "resumen")) as Tab,
@@ -100,11 +91,6 @@ function leerURL() {
     from: preset === "custom" ? clamp(q.get("desde") || f0) : f0,
     to: preset === "custom" ? q.get("hasta") || t0 : t0,
     f: { producto: (q.get("producto") as Filtros["producto"]) || "Todos", closer: q.get("closer") || "Todos", tier: q.get("tier") || "Todos", fuente: q.get("fuente") || "Todas" } as Filtros,
-    ciclo: (q.get("ciclo") === "pago" ? "pago" : "embudo") as "embudo" | "pago",
-    pf,
-    outliers: q.get("outliers") == null ? EXCLUIR_OUTLIERS_POR_DEFECTO : q.get("outliers") === "1",
-    // Filtros propios de Clientes (tipo, modalidad, país) y Gráficos (país)
-    ft: { tipo: (q.get("tipo") as FiltrosTab["tipo"]) || "Todos", modalidad: q.get("modalidad") || "Todas", pais: q.get("pais") || "Todos" } as FiltrosTab,
   };
 }
 
@@ -114,10 +100,6 @@ export function Dashboard({ email }: { email: string }) {
   const [preset, setPreset] = useState<Preset>(ini.preset);
   const [[from, to], setRange] = useState<[string, string]>([ini.from, ini.to]);
   const [f, setF] = useState<Filtros>(ini.f);
-  const [cicloVista, setCicloVista] = useState(ini.ciclo);
-  const [pf, setPf] = useState<FiltrosPago>(ini.pf);
-  const [outliers, setOutliers] = useState(ini.outliers);
-  const [ft, setFt] = useState<FiltrosTab>(ini.ft);
   const [d, setD] = useState<DashDatos | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -135,13 +117,18 @@ export function Dashboard({ email }: { email: string }) {
     supabase.rpc("dash_datos").then(({ data, error }) => {
       if (!vivo) return;
       setErr(error?.message ?? null);
-      if (data) setD(data as DashDatos);
+      if (data) {
+        const dd = data as DashDatos;
+        // 16-11: el 15-11 se crearon en GHL 9 oportunidades "Ganadas" duplicadas de clientes de octubre, sin email ni teléfono
+        // y sin fecha de cierre (caían el 15-11 e inflaban noviembre de 3 a 12). Una oportunidad sin contacto no cuenta.
+        dd.opps = dd.opps.filter((o) => o.email || o.telefono);
+        setD(dd);
+      }
     });
     return () => { vivo = false; };
   }, [reloadKey]);
 
   const rol = d?.rol ?? null;
-  const esCloser = rol === "closer";
   const esOwner = rol === "owner";
   // Un closer ve solo lo suyo: el filtro Closer queda fijo en él (la base también lo filtra)
   const fEf: Filtros = useMemo(() => (d?.closer_fijo ? { ...f, closer: d.closer_fijo } : f), [f, d?.closer_fijo]);
@@ -158,11 +145,8 @@ export function Dashboard({ email }: { email: string }) {
     if (f.closer !== "Todos") q.set("closer", f.closer);
     if (f.tier !== "Todos") q.set("tier", f.tier);
     if (f.fuente !== "Todas") q.set("fuente", f.fuente);
-    if (tab === "clientes" || tab === "graficos") { if (ft.pais !== "Todos") q.set("pais", ft.pais); }
-    if (tab === "clientes") { if (ft.tipo !== "Todos") q.set("tipo", ft.tipo); if (ft.modalidad !== "Todas") q.set("modalidad", ft.modalidad); }
-    if (tab === "ciclo") { q.set("ciclo", cicloVista); if (Object.values(pf).some((v) => v.length)) q.set("mf", JSON.stringify(pf)); if (outliers !== EXCLUIR_OUTLIERS_POR_DEFECTO) q.set("outliers", outliers ? "1" : "0"); }
     history.replaceState(null, "", `${location.pathname}?${q}`);
-  }, [tab, preset, from, to, f, cicloVista, pf, outliers, ft]);
+  }, [tab, preset, from, to, f]);
 
   // Actualizar: trae GHL y Meta al momento y recarga
   const refresh = useCallback(async () => {
@@ -189,16 +173,7 @@ export function Dashboard({ email }: { email: string }) {
     f.tier !== "Todos" ? { k: "tier" as const, label: `Tier: ${f.tier}`, vacio: "Todos" } : null,
     f.fuente !== "Todas" ? { k: "fuente" as const, label: `Fuente: ${f.fuente}`, vacio: "Todas" } : null,
   ].filter((x): x is { k: keyof Filtros; label: string; vacio: string } => !!x);
-  // Filtros propios de la pestaña (Clientes: tipo, modalidad, país · Gráficos: país)
-  const conFt = tab === "clientes" || tab === "graficos";
-  const activosTab: { k: keyof FiltrosTab; label: string }[] = !conFt ? [] : [
-    tab === "clientes" && ft.tipo !== "Todos" ? { k: "tipo" as const, label: `Tipo: ${ft.tipo}` } : null,
-    tab === "clientes" && ft.modalidad !== "Todas" ? { k: "modalidad" as const, label: `Modalidad: ${ft.modalidad}` } : null,
-    ft.pais !== "Todos" ? { k: "pais" as const, label: `País: ${ft.pais}` } : null,
-  ].filter((x): x is { k: keyof FiltrosTab; label: string } => !!x);
-  const ctx = useMemo(() => (d ? ctxTracker(d) : null), [d]);
-  const optsTab = useMemo(() => (ctx ? opcionesTab(ctx) : { modalidades: [], paises: [] }), [ctx]);
-  const nActivos = activos.length + activosTab.length;
+  const nActivos = activos.length;
   const ultima = d?.sync?.ghl ? new Date(d.sync.ghl).toLocaleString("es", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
   const props = d ? { d, f: fEf, from, to } : null;
 
@@ -255,16 +230,8 @@ export function Dashboard({ email }: { email: string }) {
                 {!d?.closer_fijo && <div className="filtro-fila"><span>Closer</span><Seg label="Closer" value={f.closer} onChange={(v) => setF({ ...f, closer: v })} options={[["Todos", "Todos"], ...opts.closers.map((c) => [c, c] as const)] as const} /></div>}
                 <div className="filtro-fila"><span>Tier</span><Seg label="Tier setter" value={f.tier} onChange={(v) => setF({ ...f, tier: v })} options={[["Todos", "Todos"], ...opts.tiers.map((t) => [t, t] as const)] as const} /></div>
                 <div className="filtro-fila"><span>Fuente</span><Seg label="Fuente" value={f.fuente} onChange={(v) => setF({ ...f, fuente: v })} options={[["Todas", "Todas"], ...opts.fuentes.map((x) => [x, x] as const)] as const} /></div>
-                {conFt && (
-                  <div className="filtros-tab">
-                    <div className="filtro-seccion">{tab === "clientes" ? "Clientes" : "Gráficos"}</div>
-                    {tab === "clientes" && <div className="filtro-fila"><span>Tipo</span><Seg label="Tipo de cierre" value={ft.tipo} onChange={(v) => setFt({ ...ft, tipo: v })} options={[["Todos", "Todos"], ["Nuevos", "Nuevos"], ["Seguimiento", "Seguimiento"]] as const} /></div>}
-                    {tab === "clientes" && <div className="filtro-fila"><span>Modalidad</span><select className="select" value={ft.modalidad} onChange={(e) => setFt({ ...ft, modalidad: e.target.value })}><option value="Todas">Todas</option>{optsTab.modalidades.map((m) => <option key={m} value={m}>{m}</option>)}</select></div>}
-                    <div className="filtro-fila"><span>País</span><select className="select" value={ft.pais} onChange={(e) => setFt({ ...ft, pais: e.target.value })}><option value="Todos">Todos</option>{optsTab.paises.map((m) => <option key={m} value={m}>{m}</option>)}</select></div>
-                  </div>
-                )}
                 <div className="pop-acciones">
-                  <button className="link" onClick={() => { setF({ ...FILTROS_VACIOS, closer: d?.closer_fijo ?? "Todos" }); setFt(FILTROS_TAB_VACIOS); }}>Limpiar todo</button>
+                  <button className="link" onClick={() => { setF({ ...FILTROS_VACIOS, closer: d?.closer_fijo ?? "Todos" }); }}>Limpiar todo</button>
                   <button className="primary" onClick={() => setPanel(null)}>Listo</button>
                 </div>
               </div>
@@ -273,7 +240,6 @@ export function Dashboard({ email }: { email: string }) {
           {nActivos > 0 && (
             <span className="chips">
               {activos.map((a) => <span key={a.k} className="chip-filtro">{a.label}<button aria-label={`Quitar ${a.label}`} onClick={() => setF({ ...f, [a.k]: a.vacio })}>✕</button></span>)}
-              {activosTab.map((a) => <span key={a.k} className="chip-filtro">{a.label}<button aria-label={`Quitar ${a.label}`} onClick={() => setFt({ ...ft, [a.k]: FILTROS_TAB_VACIOS[a.k] })}>✕</button></span>)}
             </span>
           )}
         </div>
@@ -295,13 +261,7 @@ export function Dashboard({ email }: { email: string }) {
           : tab === "equipo" ? <Equipo {...props} reloadKey={reloadKey} irASeguimientos={(c) => { setF({ ...f, closer: c }); setTab("seguimientos"); }} />
           : tab === "seguimientos" ? <Seguimientos d={props.d} f={props.f} setCloser={(c) => setF({ ...f, closer: c })} />
           : tab === "metas" ? <Metas {...props} />
-          : tab === "tendencias" ? <Tendencias {...props} />
-          : tab === "ciclo" ? <Ciclo {...props} vista={cicloVista} setVista={setCicloVista} pf={pf} setPf={setPf} outliers={outliers} setOutliers={setOutliers} />
           : tab === "cobranza" ? <Cobranza {...props} />
-          : tab === "clientes" && ctx ? <Clientes {...props} ctx={ctx} ft={ft} from={preset === "all" ? HISTORICO_CLIENTES : from} />
-          : tab === "numeros" && ctx ? <Numeros {...props} ctx={ctx} />
-          : tab === "graficos" && ctx ? <Graficos {...props} ctx={ctx} pais={ft.pais} />
-          : tab === "hoy" ? <Hoy d={props.d} f={props.f} reloadKey={reloadKey} esCloser={esCloser} />
           : null}
       </main>
     </div>

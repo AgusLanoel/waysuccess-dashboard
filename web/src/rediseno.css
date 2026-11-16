@@ -7,7 +7,7 @@
 .barra { flex: none; background: var(--surface); border-bottom: 1px solid var(--border); padding: 6px 16px; display: grid; gap: 5px; position: sticky; top: 0; z-index: 20; }
 .barra-1, .barra-2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
 .barra-1 .brand { margin-right: 6px; }
-.pestanas { display: flex; gap: 2px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.pestanas { display: flex; gap: 2px; flex-wrap: nowrap; overflow-x: auto; flex: 1; min-width: 0; }
 .pestanas button { background: none; border: 0; padding: 5px 9px; border-radius: 7px; cursor: pointer; font-size: 13px; color: var(--text-2); }
 .pestanas button.on { background: var(--surface-2); color: var(--text); font-weight: 600; }
 .barra-user { display: flex; align-items: center; gap: 4px; font-size: 12px; margin-left: auto; }
