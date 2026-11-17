@@ -132,7 +132,17 @@ export function Dashboard({ email }: { email: string }) {
   const esOwner = rol === "owner";
   // Un closer ve solo lo suyo: el filtro Closer queda fijo en él (la base también lo filtra)
   const fEf: Filtros = useMemo(() => (d?.closer_fijo ? { ...f, closer: d.closer_fijo } : f), [f, d?.closer_fijo]);
-  const tabs = TABS.filter(([k]) => k !== "ads" || esOwner);
+  // 17-11 (dueño + Rod): dashboard ejecutivo = Resumen · Equipo · Ads (lo que se revisa los lunes; solo owners).
+  // Closer: solo sus números (Equipo filtrado a él) + sus seguimientos y cobranza. Laura (finanzas): lo operativo,
+  // hasta que Rod lo monte en su project tracker.
+  const PORROL: Record<string, Tab[]> = {
+    owner: ["resumen", "equipo", "ads"],
+    closer: ["equipo", "seguimientos", "cobranza"],
+    finanzas: ["equipo", "seguimientos", "metas", "cobranza"],
+  };
+  const permitidas = PORROL[rol ?? ""] ?? [];
+  const tabs = TABS.filter(([k]) => permitidas.includes(k)).map(([k, l]) => [k, rol === "closer" && k === "equipo" ? "Mis números" : l] as [Tab, string]);
+  useEffect(() => { if (rol && !permitidas.includes(tab) && permitidas.length) setTab(permitidas[0]); }, [rol]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (preset !== "custom") setRange(rangeFor(preset)); }, [preset]);
 
@@ -254,7 +264,8 @@ export function Dashboard({ email }: { email: string }) {
       {showPw && <ChangePassword onDone={() => setShowPw(false)} />}
       <main className="contenido">
         {err && <p className="error">Error: {err}</p>}
-        {tab === "centro" ? <CentroComercial isOwner={esOwner} reloadKey={reloadKey} />
+        {d && !permitidas.includes(tab) ? <div className="vacio">Sin acceso a esta sección.</div>
+          : tab === "centro" ? <CentroComercial isOwner={esOwner} reloadKey={reloadKey} />
           : tab === "ads" && esOwner ? <Ads from={from} to={to} reloadKey={reloadKey} />
           : !props ? <div className="vacio">Cargando datos…</div>
           : tab === "resumen" ? <Resumen {...props} />
