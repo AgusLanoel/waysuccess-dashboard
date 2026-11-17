@@ -62,6 +62,7 @@ CHEQUEO DE FAIR PLAY (Cumple / Incumple, con cita):
 - Solo las garantías de la oferta: incumple si garantiza leads, ventas o días exactos, o garantías distintas (JessiK = 100 agendas calificadas o devolución; DFY = 100.000 seguidores), u omite las condiciones de la garantía.
 - Oferta correcta para la facturación: incumple si ofrece JessiK a quien factura más de 50.000 USD/mes, o DFY a quien no califica.
 
+FORMATO: exactamente 10 momentos (n = 1 a 10, en orden), exactamente 5 KPIs (nota entera de 0 a 10), exactamente 4 chequeos de Fair Play y hasta 3 prioridades.
 PRIORIDADES DE COACHING: las tres correcciones con más impacto en que el prospecto pague, ordenadas; cada una con la frase concreta que el closer debió decir.
 La transcripción automática a veces se come dígitos ("$,000", "80" por 980): resolvelo con el contexto. Español neutro.`;
 
@@ -85,15 +86,15 @@ const ESQUEMA = {
       },
     },
     momentos: {
-      type: "array", minItems: 10, maxItems: 10,
+      type: "array",
       items: { type: "object", additionalProperties: false, required: ["n", "estado", "evidencia"], properties: { n: { type: "integer" }, estado, evidencia: { type: "string", description: "Cita textual corta (máx. 200 caracteres) con minuto; si falla por ausencia, decir qué faltó" } } },
     },
     kpis: {
-      type: "array", minItems: 5, maxItems: 5,
-      items: { type: "object", additionalProperties: false, required: ["kpi", "nota", "evidencia"], properties: { kpi: { type: "string", enum: KPIS }, nota: { type: "integer", minimum: 0, maximum: 10 }, evidencia: { type: "string" } } },
+      type: "array",
+      items: { type: "object", additionalProperties: false, required: ["kpi", "nota", "evidencia"], properties: { kpi: { type: "string", enum: KPIS }, nota: { type: "integer" }, evidencia: { type: "string" } } },
     },
     fair_play: {
-      type: "array", minItems: 4, maxItems: 4,
+      type: "array",
       items: { type: "object", additionalProperties: false, required: ["chequeo", "estado", "evidencia"], properties: { chequeo: { type: "string", enum: FAIR }, estado: { type: "string", enum: ["Cumple", "Incumple"] }, evidencia: { type: "string" } } },
     },
     objeciones: {
@@ -104,7 +105,7 @@ const ESQUEMA = {
         manejo: { type: "string", enum: ["Aislada, respondida y confirmada", "Respondida sin confirmar", "Esquivada"] },
       } },
     },
-    prioridades: { type: "array", minItems: 1, maxItems: 3, items: { type: "string", description: "Corrección + frase concreta que debió decir" } },
+    prioridades: { type: "array", items: { type: "string", description: "Corrección + frase concreta que debió decir" } },
     resumen: { type: "string", description: "2 o 3 líneas para el closer: qué hizo bien y qué le costó la venta" },
   },
 };
