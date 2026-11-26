@@ -11,6 +11,7 @@ import { Seguimientos } from "./components/tabs/Seguimientos";
 import { Metas } from "./components/tabs/Metas";
 import { Cobranza } from "./components/tabs/Cobranza";
 import { Ads } from "./components/tabs/Ads";
+import { Organico } from "./components/tabs/Organico";
 import { CentroComercial } from "./components/CentroComercial";
 
 export default function App() {
@@ -72,9 +73,9 @@ function rangeFor(p: Preset): [string, string] {
 
 // ───────── Pestañas ─────────
 // 16-11 (dueño): fuera Tendencias, Ciclo, Clientes, Números, Gráficos y Hoy (Hoy ya es un filtro de período)
-type Tab = "resumen" | "equipo" | "seguimientos" | "metas" | "cobranza" | "ads" | "centro";
+type Tab = "resumen" | "equipo" | "seguimientos" | "metas" | "cobranza" | "ads" | "organico" | "centro";
 const TABS: [Tab, string][] = [
-  ["resumen", "Resumen"], ["equipo", "Equipo"], ["seguimientos", "Seguimientos"], ["metas", "Metas"], ["cobranza", "Cobranza"], ["ads", "Ads"], ["centro", "Centro comercial"],
+  ["resumen", "Resumen"], ["equipo", "Equipo"], ["seguimientos", "Seguimientos"], ["metas", "Metas"], ["cobranza", "Cobranza"], ["ads", "Ads"], ["organico", "Orgánico"], ["centro", "Centro comercial"],
 ];
 const SIN_PERIODO: Tab[] = ["centro"];
 
@@ -136,7 +137,7 @@ export function Dashboard({ email }: { email: string }) {
   // Closer: solo sus números (Equipo filtrado a él) + sus seguimientos y cobranza. Laura (finanzas): lo operativo,
   // hasta que Rod lo monte en su project tracker.
   const PORROL: Record<string, Tab[]> = {
-    owner: ["resumen", "equipo", "ads"],
+    owner: ["resumen", "equipo", "ads", "organico"], // 26-11: Orgánico = atribución por pieza (separado de Ads)
     closer: ["equipo", "seguimientos", "cobranza"],
     finanzas: ["equipo", "seguimientos", "metas", "cobranza"],
   };
@@ -267,6 +268,7 @@ export function Dashboard({ email }: { email: string }) {
         {d && !permitidas.includes(tab) ? <div className="vacio">Sin acceso a esta sección.</div>
           : tab === "centro" ? <CentroComercial isOwner={esOwner} reloadKey={reloadKey} />
           : tab === "ads" && esOwner ? <Ads from={from} to={to} reloadKey={reloadKey} />
+          : tab === "organico" && esOwner ? <Organico from={from} to={to} reloadKey={reloadKey} />
           : !props ? <div className="vacio">Cargando datos…</div>
           : tab === "resumen" ? <Resumen {...props} />
           : tab === "equipo" ? <Equipo {...props} reloadKey={reloadKey} irASeguimientos={(c) => { setF({ ...f, closer: c }); setTab("seguimientos"); }} />

@@ -3,7 +3,7 @@
 // Fondo siempre oscuro. Los únicos colores que se repiten entre pestañas son los de estado (rojo/ámbar/verde).
 import { createContext, useContext } from "react";
 
-export type TabId = "resumen" | "equipo" | "seguimientos" | "metas" | "tendencias" | "ciclo" | "cobranza" | "clientes" | "numeros" | "graficos" | "hoy" | "ads" | "centro";
+export type TabId = "resumen" | "equipo" | "seguimientos" | "metas" | "tendencias" | "ciclo" | "cobranza" | "clientes" | "numeros" | "graficos" | "hoy" | "ads" | "organico" | "centro";
 
 // Color base de cada pestaña: 13 tonos claramente distintos, legibles sobre fondo oscuro
 export const BASE: Record<TabId, string> = {
@@ -20,6 +20,7 @@ export const BASE: Record<TabId, string> = {
   graficos: "#4ADE80", // verde claro
   hoy: "#D946EF", // magenta
   ads: "#FB7185", // coral
+  organico: "#C9A0FF", // lavanda (26-11)
   centro: "#2DD4BF", // turquesa
 };
 
