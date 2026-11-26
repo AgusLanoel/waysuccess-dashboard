@@ -10,7 +10,7 @@ import { ghlContacto } from "../ui";
 
 type Modelo = "primero" | "ultimo" | "mitad";
 interface Fila { pieza: string; tipo: string; contactos: number; agendas: number; calificadas: number; asistencias: number; ventas: number; cash: number; clics: number; views: number | null }
-interface Contacto { contact_id: string; creado: string; nombre: string | null; email: string | null; telefono: string | null; pieza_primera: string; pieza_ultima: string; slug: string | null; medio: string; facturacion: string | null; agendo: boolean; asistio: boolean; califica: boolean; cobrado: number }
+interface Contacto { contact_id: string; creado: string; nombre: string | null; email: string | null; telefono: string | null; pieza_primera: string; pieza_ultima: string; slug: string | null; medio: string; facturacion: string | null; en_cohorte: boolean; agendo: boolean; asistio: boolean; califica: boolean; ventas: number; cobrado: number }
 interface Link { slug: string; pieza_id: string; automatizacion: string | null; destino: string; clics: number; ultimo_clic: string | null; contactos: number }
 interface Conex { whop_ultimo: { ok: boolean; detalle: string; at: string } | null; whop_ok: number; ig_ultimo: { ok: boolean; at: string } | null; pagos: number; pagos_sin_cruzar: number; clics: number; toques_ig: number }
 
@@ -21,12 +21,12 @@ interface ColDef { key: string; label: string; title?: string; get: (r: Fila) =>
 const dec1 = (n: number | null) => (n == null ? "—" : Number.isInteger(n) ? num(n) : n.toFixed(1).replace(".", ","));
 const COLS: ColDef[] = [
   { key: "contactos", label: "Contactos", title: "Personas que entraron a GHL desde esta pieza en el período", get: (r) => r.contactos, fmt: dec1 },
-  { key: "agendas", label: "Agendas", get: (r) => r.agendas, fmt: dec1 },
-  { key: "calificadas", label: "Calificadas", title: "Agendas con facturación de US$10k/mes o más", get: (r) => r.calificadas, fmt: dec1 },
-  { key: "pcal", label: "% calif.", get: (r) => ratio(r.calificadas, r.agendas), fmt: (n) => pct(n, 0) },
-  { key: "asistencias", label: "Asistencias", get: (r) => r.asistencias, fmt: dec1 },
-  { key: "ventas", label: "Ventas", get: (r) => r.ventas, fmt: dec1 },
-  { key: "cash", label: "Cobrado", title: "Cobrado según el Tracker comercial", get: (r) => r.cash, fmt: money },
+  { key: "agendas", label: "Agendas", title: "Agendas calificadas (DFY o JessiK) con fecha en el período — misma regla que el Resumen", get: (r) => r.agendas, fmt: dec1 },
+  { key: "asistencias", label: "Asistencias", title: "Primera asistencia de la persona en el período — misma regla que el Resumen", get: (r) => r.asistencias, fmt: dec1 },
+  { key: "calificadas", label: "Asist. calificadas", title: "Asistencias que el closer marcó calificadas", get: (r) => r.calificadas, fmt: dec1 },
+  { key: "pcal", label: "% calif.", get: (r) => ratio(r.calificadas, r.asistencias), fmt: (n) => pct(n, 0) },
+  { key: "ventas", label: "Cierres", title: "Cierres (Won) con fecha de cierre en el período", get: (r) => r.ventas, fmt: dec1 },
+  { key: "cash", label: "Cobrado", title: "Cobrado de los cierres del período (igual que el Resumen)", get: (r) => r.cash, fmt: money },
   { key: "clics", label: "Clics link", title: "Clics en los links cortos de esta pieza (www.waysuccess.io/l/…)", get: (r) => r.clics, fmt: num },
   { key: "views", label: "Views", title: "Vistas de Instagram (llegan cuando Meta apruebe la app)", get: (r) => r.views, fmt: num },
   { key: "cpk", label: "Cobrado / 1k views", get: (r) => (r.views ? (r.cash / r.views) * 1000 : null), fmt: money },
@@ -62,7 +62,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
       const e = r.error ?? b.error ?? l.error ?? c.error;
       if (e) setErr(e.message);
       setRows(((r.data ?? []) as Fila[]).map((x) => ({ ...x, contactos: +x.contactos, agendas: +x.agendas, calificadas: +x.calificadas, asistencias: +x.asistencias, ventas: +x.ventas, cash: +x.cash, clics: +x.clics, views: x.views == null ? null : +x.views })));
-      setContactos(((b.data ?? []) as Contacto[]).map((x) => ({ ...x, cobrado: +x.cobrado })));
+      setContactos(((b.data ?? []) as Contacto[]).map((x) => ({ ...x, ventas: +x.ventas, cobrado: +x.cobrado })));
       setLinks(((l.data ?? []) as Link[]).map((x) => ({ ...x, clics: +x.clics, contactos: +x.contactos })));
       setConex((c.data as Conex) ?? null);
       setLoading(false);
@@ -79,22 +79,24 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
   }, [rows, sort]);
 
   const t = useMemo(() => {
+    // 26-11: agendas/asistencias/cierres/cobrado con las mismas reglas que la columna Orgánico del Resumen
     const c = contactos;
+    const co = c.filter((x) => x.en_cohorte);
     return {
-      contactos: c.length, agendas: c.filter((x) => x.agendo).length, calificadas: c.filter((x) => x.agendo && x.califica).length,
-      asistencias: c.filter((x) => x.asistio).length, ventas: c.filter((x) => x.cobrado > 0).length, cash: c.reduce((s, x) => s + x.cobrado, 0),
-      sinPieza: c.filter((x) => x.pieza_primera === "sin-pieza").length, clics: links.reduce((s, x) => s + x.clics, 0),
+      contactos: co.length, agendas: c.filter((x) => x.agendo).length, calificadas: c.filter((x) => x.califica).length,
+      asistencias: c.filter((x) => x.asistio).length, ventas: c.reduce((s, x) => s + x.ventas, 0), cash: c.reduce((s, x) => s + x.cobrado, 0),
+      sinPieza: co.filter((x) => x.pieza_primera === "sin-pieza").length, clics: links.reduce((s, x) => s + x.clics, 0),
     };
   }, [contactos, links]);
   const mejor = visibles.find((r) => r.pieza !== "sin-pieza" && r.cash > 0);
 
   const kpis: [string, string, string?][] = [
-    ["Cobrado orgánico", money(t.cash), `${num(t.ventas)} ventas${mejor ? ` · la que más cobró: ${nombrePieza(mejor.pieza)}` : ""}`],
-    ["Contactos", num(t.contactos), `${pct(ratio(t.sinPieza, t.contactos), 0)} sin pieza identificada (${num(t.sinPieza)})`],
-    ["Agendas", num(t.agendas), `${pct(ratio(t.agendas, t.contactos), 0)} de los contactos`],
-    ["Agendas calificadas", num(t.calificadas), `${pct(ratio(t.calificadas, t.agendas), 0)} de las agendas`],
-    ["Asistencias", num(t.asistencias)],
-    ["Cierre", pct(ratio(t.ventas, t.asistencias), 0), `${num(t.ventas)} ventas de ${num(t.asistencias)} asistencias`],
+    ["Cobrado orgánico", money(t.cash), `${num(t.ventas)} cierres${mejor ? ` · la que más cobró: ${nombrePieza(mejor.pieza)}` : ""}`],
+    ["Contactos nuevos", num(t.contactos), `${pct(ratio(t.sinPieza, t.contactos), 0)} sin pieza identificada (${num(t.sinPieza)})`],
+    ["Agendas", num(t.agendas), "Calificadas (DFY o JessiK), igual que el Resumen"],
+    ["Asistencias", num(t.asistencias), `${pct(ratio(t.asistencias, t.agendas), 0)} de asistencia`],
+    ["Asistencias calificadas", num(t.calificadas), `${pct(ratio(t.calificadas, t.asistencias), 0)} de las asistencias`],
+    ["% Cierre", pct(ratio(t.ventas, t.asistencias), 0), `${num(t.ventas)} cierres de ${num(t.asistencias)} asistencias`],
     ["Clics en links", num(t.clics), "Links cortos www.waysuccess.io/l/…"],
   ];
 
@@ -162,7 +164,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
         <section className="card table-card">
           <div className="table-wrap">
             <table>
-              <thead><tr><th className="name">Contacto</th><th>Entró</th><th>Primera pieza</th><th>Última pieza</th><th>Agendó</th><th>Calificó</th><th>Asistió</th><th>Cobrado</th></tr></thead>
+              <thead><tr><th className="name">Contacto</th><th>Entró</th><th>Primera pieza</th><th>Última pieza</th><th>Agendó</th><th>Asistió</th><th>Asist. calificada</th><th>Cobrado</th></tr></thead>
               <tbody>
                 {lista.slice().sort((a, b) => b.cobrado - a.cobrado || +new Date(b.creado) - +new Date(a.creado)).slice(0, 200).map((c) => {
                   const url = ghlContacto(c.contact_id);
@@ -173,8 +175,8 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
                       <td>{nombrePieza(c.pieza_primera)}</td>
                       <td>{c.pieza_ultima === c.pieza_primera ? "—" : nombrePieza(c.pieza_ultima)}</td>
                       <td>{c.agendo ? "Sí" : "—"}</td>
-                      <td>{c.agendo ? (c.califica ? "Sí" : "No") : "—"}</td>
                       <td>{c.asistio ? "Sí" : "—"}</td>
+                      <td>{c.asistio ? (c.califica ? "Sí" : "No") : "—"}</td>
                       <td>{c.cobrado > 0 ? money(c.cobrado) : "—"}</td>
                     </tr>
                   );
