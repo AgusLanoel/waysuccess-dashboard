@@ -129,21 +129,26 @@ export function Dashboard({ email }: { email: string }) {
     return () => { vivo = false; };
   }, [reloadKey]);
 
+  // 26-11 (Agustín): solo quien tiene vista_total (nitsuga442) ve Equipo, Ads y Orgánico; los demás owners ven solo Resumen.
+  // La base también lo exige (report, cierres, ads_show_rate, agendas_calificadas y org_* devuelven vacío sin vista_total).
+  const [vistaTotal, setVistaTotal] = useState(false);
+  const [vistaLista, setVistaLista] = useState(false);
+  useEffect(() => { supabase.rpc("mi_vista").then(({ data }) => { setVistaTotal(!!(data as { total?: boolean } | null)?.total); setVistaLista(true); }); }, []);
   const rol = d?.rol ?? null;
-  const esOwner = rol === "owner";
+  const esOwner = rol === "owner" && vistaTotal;
   // Un closer ve solo lo suyo: el filtro Closer queda fijo en él (la base también lo filtra)
   const fEf: Filtros = useMemo(() => (d?.closer_fijo ? { ...f, closer: d.closer_fijo } : f), [f, d?.closer_fijo]);
   // 17-11 (dueño + Rod): dashboard ejecutivo = Resumen · Equipo · Ads (lo que se revisa los lunes; solo owners).
   // Closer: solo sus números (Equipo filtrado a él) + sus seguimientos y cobranza. Laura (finanzas): lo operativo,
   // hasta que Rod lo monte en su project tracker.
   const PORROL: Record<string, Tab[]> = {
-    owner: ["resumen", "equipo", "ads", "organico"], // 26-11: Orgánico = atribución por pieza (separado de Ads)
+    owner: vistaTotal ? ["resumen", "equipo", "ads", "organico"] : ["resumen"], // 26-11: Orgánico = atribución por pieza; vista total solo Agustín
     closer: ["equipo", "seguimientos", "cobranza"],
     finanzas: ["equipo", "seguimientos", "metas", "cobranza"],
   };
   const permitidas = PORROL[rol ?? ""] ?? [];
   const tabs = TABS.filter(([k]) => permitidas.includes(k)).map(([k, l]) => [k, rol === "closer" && k === "equipo" ? "Mis números" : l] as [Tab, string]);
-  useEffect(() => { if (rol && !permitidas.includes(tab) && permitidas.length) setTab(permitidas[0]); }, [rol]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (rol && vistaLista && !permitidas.includes(tab) && permitidas.length) setTab(permitidas[0]); }, [rol, vistaTotal, vistaLista]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (preset !== "custom") setRange(rangeFor(preset)); }, [preset]);
 
