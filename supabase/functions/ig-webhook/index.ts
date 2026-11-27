@@ -10,7 +10,7 @@ const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 const VERIFY = (Deno.env.get("IG_VERIFY_TOKEN") || "jessik-organico-2026").trim();
 const SECRETS = [Deno.env.get("IG_APP_SECRET"), Deno.env.get("META_APP_SECRET")].map((s) => (s ?? "").trim()).filter(Boolean);
 const LINK = "https://www.waysuccess.io/l/";
-const G = "https://graph.instagram.com";
+const IG_ID = (Deno.env.get("IG_USER_ID") ?? "17841440091537738").trim();
 const enc = new TextEncoder();
 
 async function firmaOk(req: Request, body: string) {
@@ -68,7 +68,9 @@ async function tokenIg() {
 async function post(path: string, body: unknown) {
   const t = await tokenIg();
   if (!t) throw new Error("falta token de IG");
-  const r = await fetch(`${G}/${path}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` }, body: JSON.stringify(body) });
+  // token de Instagram (IGAA…) → graph.instagram.com/me; token de Facebook (EAA…) → graph.facebook.com/<id de la cuenta de IG>
+  const base = t.startsWith("EAA") ? "https://graph.facebook.com/v23.0" : "https://graph.instagram.com";
+  const r = await fetch(`${base}/${path.replace(/^me\//, t.startsWith("EAA") ? `${IG_ID}/` : "me/")}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || j.error) throw new Error(j.error?.message ?? `HTTP ${r.status}`);
   return j;

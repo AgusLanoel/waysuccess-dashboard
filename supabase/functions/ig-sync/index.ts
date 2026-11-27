@@ -4,7 +4,13 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-const G = "https://graph.instagram.com";
+const G_IG = "https://graph.instagram.com";
+const G_FB = "https://graph.facebook.com/v23.0";
+// Token de Instagram (IGAA…) → graph.instagram.com con "me". Token de Facebook (EAA…, cuando la app usa el inicio de
+// sesión de Facebook) → graph.facebook.com con el id de la cuenta de IG en vez de "me".
+const IG_ID = (Deno.env.get("IG_USER_ID") ?? "17841440091537738").trim();
+let G = G_IG;
+const yo = (t: string) => (t.startsWith("EAA") ? IG_ID : "me");
 
 async function ig(path: string, token: string, params: Record<string, string> = {}) {
   const u = new URL(path.startsWith("http") ? path : `${G}/${path}`);
@@ -22,12 +28,15 @@ async function token(): Promise<{ token: string; user: string }> {
   if (!row?.token) {
     const t = (Deno.env.get("IG_ACCESS_TOKEN") ?? "").trim();
     if (!t) throw new Error("falta IG_ACCESS_TOKEN");
-    const me = await ig("me", t, { fields: "user_id,username" });
-    await sb.rpc("org_ig_token_set", { p_token: t, p_expira: new Date(Date.now() + 55 * 864e5).toISOString(), p_user: String(me.user_id), p_username: me.username });
-    row = { token: t, ig_user_id: String(me.user_id), token_expira: new Date(Date.now() + 55 * 864e5).toISOString() };
+    G = t.startsWith("EAA") ? G_FB : G_IG;
+    const me = await ig(yo(t), t, { fields: t.startsWith("EAA") ? "id,username" : "user_id,username" });
+    const uid = String(me.user_id ?? me.id);
+    await sb.rpc("org_ig_token_set", { p_token: t, p_expira: t.startsWith("EAA") ? null : new Date(Date.now() + 55 * 864e5).toISOString(), p_user: uid, p_username: me.username });
+    row = { token: t, ig_user_id: uid, token_expira: t.startsWith("EAA") ? null : new Date(Date.now() + 55 * 864e5).toISOString() };
   }
+  G = String(row.token).startsWith("EAA") ? G_FB : G_IG;
   // renovar si vence en menos de 20 días (el token largo de IG dura 60 y se puede renovar después de 24 h)
-  if (row.token_expira && new Date(row.token_expira).getTime() - Date.now() < 20 * 864e5) {
+  if (G === G_IG && row.token_expira && new Date(row.token_expira).getTime() - Date.now() < 20 * 864e5) {
     try {
       const r = await ig("refresh_access_token", row.token, { grant_type: "ig_refresh_token" });
       await sb.rpc("org_ig_token_set", { p_token: r.access_token, p_expira: new Date(Date.now() + (r.expires_in ?? 5184000) * 1000).toISOString(), p_user: null, p_username: null });
@@ -62,13 +71,13 @@ Deno.serve(async (req) => {
     const F = "id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url";
     const media: any[] = [];
     let next: string | null = null, pag = 0;
-    let j = await ig("me/media", t, { fields: F, limit: "50" });
+    let j = await ig(`${yo(t)}/media`, t, { fields: F, limit: "50" });
     do {
       media.push(...(j.data ?? []));
       next = j.paging?.next ?? null;
       if (next && ++pag < 6) j = await ig(next, t); else next = null;
     } while (next);
-    try { media.push(...((await ig("me/stories", t, { fields: F })).data ?? [])); } catch (e) { console.error("stories", String(e)); }
+    try { media.push(...((await ig(`${yo(t)}/stories`, t, { fields: F })).data ?? [])); } catch (e) { console.error("stories", String(e)); }
 
     const { data: prev } = await sb.from("org_piezas").select("id, insights_at, publicado_at").like("id", "ig-%");
     const vist = new Map((prev ?? []).map((p: any) => [p.id, p]));
@@ -76,7 +85,7 @@ Deno.serve(async (req) => {
     for (const m of media) {
       const id = `ig-${m.id}`, tipo = tipoDe(m);
       const row: Record<string, unknown> = {
-        id, ig_media_id: m.id, tipo, cuenta: "jessik", permalink: m.permalink, publicado_at: m.timestamp,
+        id, ig_media_id: m.id, tipo, cuenta: "waysuccess_", permalink: m.permalink, publicado_at: m.timestamp,
         caption: m.caption ?? null, titulo: (m.caption ?? "").split("\n")[0].slice(0, 90) || null,
         likes: m.like_count ?? null, comentarios: m.comments_count ?? null, media_url: m.media_url ?? null, thumbnail_url: m.thumbnail_url ?? m.media_url ?? null,
       };
