@@ -1,0 +1,47 @@
+-- 2026-11-27 Atribución retroactiva de posts y reels (orden ordenes/2026-11-27-datos-atribucion-retroactiva.md)
+-- Aplicado en Supabase iqiyhlcqnxwtdhmmrlsp como migraciones:
+--   org_comentarios_y_atribucion_recuperada, org_recuperar_atribucion_fn, org_base_capa_recuperada, org_comentarios_piezas_rpc
+-- Edge function nueva: ig-comentarios (cron 'ig-comentarios' 41 * * * *).
+--
+-- Idea: antes del 27-11 ManyChat mandaba el mismo link a todos (utm_content = jessi / ganadores), así que no se sabe en
+-- qué publicación comentó cada persona. Se traen los comentarios de cada publicación (org_comentarios) y se cruzan con el
+-- usuario de Instagram que la persona escribió en el quiz (quiz_leads.respuestas->>'q_instagram', normalizado igual que
+-- normalizarUsuario() del quiz). La reasignación vive en org_atribucion_recuperada (capa propia); los UTM de GHL no se tocan.
+--
+-- Regla de crédito:
+--   * pieza genérica de automatización (manychat-*, mc-*, auto-*, jessi, ganadores, contenido) → publicación donde comentó
+--     una palabra clave en los 7 días ANTES de entrar (primero usuario exacto, luego el comentario más cercano).
+--     confianza alta = usuario exacto y ≤2 h antes; media = el resto (incluye usuario con puntos/guiones bajos distintos).
+--   * bio, historia, sin-pieza → NO cambia el crédito; si comentó en los 7 días previos queda como 'toque_previo'.
+-- Totales: org_base_base solo cambia pieza_primera/pieza_ultima → contactos, agendas, asistencias, cierres y cobrado
+-- quedan iguales (verificado 27-11, ver informes/2026-11-27-atribucion-retroactiva.md).
+--
+-- Vuelta atrás: `delete from org_atribucion_recuperada where true;` + quitar el cron ig-comentarios deja todo como antes (la capa queda vacía).
+-- Las definiciones completas están en las migraciones de Supabase (list_migrations) y abajo.
+
+-- ── Tablas ──
+-- org_comentarios(id pk, pieza_id, ig_media_id, parent_id, ig_user_id, username,
+--   usuario_norm generated = org_norm_usuario(username), texto, palabra generated = org_palabra_de(texto),
+--   propio bool, ocurrio_at, traido_at)  RLS on, sin acceso anon/authenticated.
+-- org_atribucion_recuperada(contact_id, tipo 'credito'|'toque_previo', pieza_original, pieza_id, comentario_id,
+--   usuario, palabra, comentado_at, contacto_at, horas_antes, metodo, confianza 'alta'|'media'|'baja', calculado_at,
+--   pk (contact_id, tipo))  RLS on, sin acceso anon/authenticated.
+--
+-- ── Funciones ──
+-- org_palabra_de(texto)  → 'jessi' | 'contenido' | 'ganadores' | null  (JESSI/JESI/JESSIK/JESSY/JESY, CONTENIDO/MARCA/CRECER, GANADORES/GANADOR/WINNER)
+-- org_norm_usuario(v)    → igual que normalizarUsuario() del quiz.
+-- org_recuperar_atribucion() (service_role; la llama ig-comentarios al final de cada corrida):
+--   usuario del contacto = quiz_leads.respuestas->>'q_instagram' (por quiz-<id>, ghl_contact_id o email) o org_leads.ig_username;
+--   entró = min(date_added, quiz created_at); match de usuario exacto o sin puntos/guiones bajos (variante, confianza media);
+--   crédito: palabra clave, 0–7 días antes; primero usuario exacto, luego el comentario más cercano;
+--   confianza alta = usuario exacto y ≤2 h; media = resto.
+--   toque_previo: cualquier comentario 0–7 días antes, solo si no hay crédito.
+-- org_base_base / org_base: + columnas pieza_original, recuperado, confianza, toque_previo;
+--   pieza_primera = coalesce(credito.pieza_id, original); pieza_ultima se reemplaza solo si era la misma pieza genérica.
+-- org_reporte_base / org_reporte: + columnas recuperados (contactos con crédito recuperado), toques_previos.
+-- org_comentarios_piezas() (authenticated + vista_total): pieza_id, comentarios, con_palabra, personas_palabra, ultimo.
+--
+-- ── Cron ──
+-- select cron.schedule('ig-comentarios', '41 * * * *', $$select private.call_fn('ig-comentarios', '{}'::jsonb)$$);
+-- Backfill hecho 27-11: select private.call_fn('ig-comentarios', '{"dias":90,"max_llamadas":1200}'::jsonb);
+--   → 120 publicaciones, 2.767 comentarios, 146 llamadas, 0 errores.

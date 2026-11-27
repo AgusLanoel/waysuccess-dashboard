@@ -31,13 +31,16 @@ const sb = createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
 const { error: e1 } = await sb.auth.signInWithPassword({ email, password });
 if (e1) throw new Error("login: " + e1.message);
 
-const [rep, links, piezasR] = await Promise.all([
+const [rep, links, piezasR, comR] = await Promise.all([
   sb.rpc("org_reporte", { desde, hasta, modelo: "primero" }),
   sb.rpc("org_links_estado", { desde, hasta }),
   sb.from("org_piezas").select("id, tipo, titulo, caption, permalink, publicado_at, views, alcance, guardados, compartidos, comentarios"),
+  sb.rpc("org_comentarios_piezas"),
 ]);
-for (const r of [rep, links, piezasR]) if (r.error) throw new Error(r.error.message);
-const filas = new Map(rep.data.map((r) => [r.pieza, { ...r, contactos: +r.contactos, agendas: +r.agendas, asistencias: +r.asistencias, calificadas: +r.calificadas, ventas: +r.ventas, cash: +r.cash, clics: +r.clics }]));
+for (const r of [rep, links, piezasR, comR]) if (r.error) throw new Error(r.error.message);
+const filas = new Map(rep.data.map((r) => [r.pieza, { ...r, contactos: +r.contactos, agendas: +r.agendas, asistencias: +r.asistencias, calificadas: +r.calificadas, ventas: +r.ventas, cash: +r.cash, clics: +r.clics, recuperados: +(r.recuperados ?? 0) }]));
+// comentarios con palabra clave por publicación (intención aunque no haya llegado al quiz)
+const kw = new Map(comR.data.map((k) => [k.pieza_id, +k.con_palabra]));
 const piezas = new Map(piezasR.data.map((p) => [p.id, p]));
 
 // ── reels y posts publicados en la ventana ──
@@ -54,12 +57,18 @@ function seccion(titulo, lista) {
     const r = filas.get(p.id), mil = p.views ? (r.contactos / p.views) * 1000 : null;
     const veces = mil && prom ? ` (${(mil / prom).toFixed(1).replace(".", ",")}× el promedio)` : "";
     const d = new Date(p.publicado_at);
-    out.push(`${i + 1}. **${limpio(p.titulo || p.caption, 90)}** — ${usd(r.cash)} · ${pl(r.agendas, "agenda", "agendas")} · ${pl(r.contactos, "contacto", "contactos")} · ${miles(p.views)} vistas${veces} · ${SEMANA[d.getDay()]} ${d.toLocaleDateString("es-CL")} · ${p.permalink}`);
+    const rec = r.recuperados ? ` (${r.recuperados === r.contactos ? "todos" : n1(r.recuperados)} recuperados por comentario ↺)` : "";
+    out.push(`${i + 1}. **${limpio(p.titulo || p.caption, 90)}** — ${usd(r.cash)} · ${pl(r.agendas, "agenda", "agendas")} · ${pl(r.contactos, "contacto", "contactos")}${rec} · ${miles(p.views)} vistas${veces}${kw.get(p.id) ? ` · ${kw.get(p.id)} comentarios con palabra clave` : ""} · ${SEMANA[d.getDay()]} ${d.toLocaleDateString("es-CL")} · ${p.permalink}`);
     if (p.caption) out.push(`   - Caption: “${limpio(p.caption.split("\n")[0], 160)}”`);
   });
   const alcance = [...lista].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 5);
   out.push("", "### Más vistas (sirven para CRECER; no necesariamente traen negocio)", "");
   alcance.forEach((p) => { const r = filas.get(p.id); out.push(`- ${limpio(p.titulo || p.caption, 90)} — ${miles(p.views)} vistas · ${miles(p.guardados)} guardados · ${miles(p.compartidos)} compartidos · ${n1(r?.contactos ?? 0)} contactos · ${p.permalink}`); });
+  const intencion = lista.filter((p) => (kw.get(p.id) ?? 0) >= 20).sort((a, b) => (kw.get(b.id) ?? 0) - (kw.get(a.id) ?? 0)).slice(0, 5);
+  if (intencion.length) {
+    out.push("", "### Más comentarios con palabra clave (intención: pidieron el recurso, aunque no todos llegaron al quiz)", "");
+    intencion.forEach((p) => out.push(`- ${limpio(p.titulo || p.caption, 90)} — ${kw.get(p.id)} comentarios con palabra clave · ${n1(filas.get(p.id)?.contactos ?? 0)} contactos · ${miles(p.views)} vistas · ${p.permalink}`));
+  }
   const cero = lista.filter((p) => (p.views ?? 0) > 50000 && !(filas.get(p.id)?.contactos)).length;
   if (cero) out.push("", `Ojo: ${cero} con más de 50 mil vistas no trajeron ningún contacto (alcance sin llamado a la acción que convierta).`);
   out.push("");
@@ -96,7 +105,7 @@ if (sinLink) H.push("", `Nota: ${sinLink} historias no tienen link corto, así q
 H.push("");
 
 // ── otros canales: bio y automatizaciones de DM ──
-const O = ["## Otros canales (bio y DMs por palabra clave)", "", "Hasta el 27-11 los comentarios con palabra clave los respondía ManyChat con un link igual para todos: esos contactos quedaron en \"ManyChat\" y NO en el post donde comentaron. Por eso los reels y posts muestran pocos o cero contactos antes de esa fecha. Desde el 27-11 cada comentario recibe un link único con su post, así que el crédito va a la publicación.", ""];
+const O = ["## Otros canales (bio y DMs por palabra clave)", "", "Hasta el 27-11 los comentarios con palabra clave los respondía ManyChat con un link igual para todos: esos contactos quedaron en \"ManyChat\" y NO en el post donde comentaron. Para ese período se RECUPERÓ el post cruzando el usuario de Instagram que la persona dejó en el quiz con quien comentó la palabra clave (marcados \"recuperados por comentario ↺\"); los que no aparecen en ningún comentario siguen en ManyChat (probablemente llegaron por DM o historia). Desde el 27-11 cada comentario recibe un link único con su post, así que el crédito va exacto a la publicación.", ""];
 for (const r of [...filas.values()].filter((r) => ["bio", "dm"].includes(r.tipo)).sort((a, b) => b.cash - a.cash || b.agendas - a.agendas || b.contactos - a.contactos))
   O.push(`- ${r.pieza} (${r.tipo}) — ${usd(r.cash)} · ${pl(r.agendas, "agenda", "agendas")} · ${pl(r.contactos, "contacto", "contactos")}`);
 O.push("");

@@ -428,3 +428,8 @@ tr.detalle .timeline { display: flex; flex-direction: column; align-items: stret
 @media (max-width: 640px) { .hist-dia th.name, .hist-dia td.name { width: 30%; } .hist-dia th:last-child, .hist-dia td:last-child { width: 78px; } .hist-dia th, .hist-dia td { padding: 6px 4px; font-size: 12px; } }
 .t-corto { display: none; }
 @media (max-width: 640px) { .t-largo { display: none; } .t-corto { display: inline; } }
+
+/* 27-11 atribución recuperada por comentario (↺) */
+.recup { color: #8a5cf6; font-weight: 600; font-size: .85em; margin-left: 3px; cursor: help; white-space: nowrap; }
+.aviso-recup { margin: 0; padding: 6px 10px; border-radius: 8px; color: var(--text-2); background: color-mix(in srgb, #8a5cf6 8%, transparent); border: 1px dashed color-mix(in srgb, #8a5cf6 35%, var(--border)); }
+.ig-metr .kw { color: #8a5cf6; }

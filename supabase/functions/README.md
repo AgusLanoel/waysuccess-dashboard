@@ -12,6 +12,7 @@ El código que corre está desplegado en Supabase (proyecto `iqiyhlcqnxwtdhmmrls
 | `check-access` | Verifica que los tokens de Meta y GHL respondan | Manual |
 | `ghl-explore` | Exploración de la estructura de GHL | Manual |
 | `control-crm` | Bot de Telegram: aviso de cierre de día (`control_cierre_aviso()`) y detalle por persona al escribirle un nombre (`control_cierre_persona()`). Acciones: `enviar`, `ver`, `webhook`, `responder` | pg_cron 21:00 ART (`0 0 * * *` UTC) + webhook de Telegram (miembros por invitación: `/invitar`, `/equipo`, `/quitar`) |
+| `ig-comentarios` | Lee los comentarios (y respuestas) de posts, carruseles y reels de los últimos 21 días → `org_comentarios`; después `org_recuperar_atribucion()` (capa `org_atribucion_recuperada`: crédito por comentario para contactos que entraron por link genérico de ManyChat antes del 27-11). Solo lectura de Meta, con reintentos y freno al 85 % de uso. Body opcional `{"dias":90,"max_llamadas":1200}` para rellenar | pg_cron `41 * * * *` |
 | `check-attribution` | Desactivada (410) | — |
 
 Autenticación: todas excepto `sheet-ingest` exigen el header `x-sync-key`, que vive en Vault (`sync_key`) y solo se usa desde `private.call_fn()`. `sheet-ingest` exige `x-sheet-key` (Vault `sheet_key`).

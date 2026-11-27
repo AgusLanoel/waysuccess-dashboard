@@ -8,7 +8,9 @@ import { nombrePiezaIG, type PiezaIG } from "./OrganicoIG";
 // ranking alimenta al agente de ideas (organico-ganadores/ganadores.mjs → waysuccess-organico/ganadores.md).
 // Historias: cada una lleva su link corto (toques del sticker) creado acá con org_link_historia.
 
-export interface FilaF { pieza: string; tipo: string; contactos: number; agendas: number; calificadas: number; asistencias: number; ventas: number; cash: number; clics: number; views: number | null }
+export interface FilaF { pieza: string; tipo: string; contactos: number; agendas: number; calificadas: number; asistencias: number; ventas: number; cash: number; clics: number; views: number | null; recuperados?: number; toques_previos?: number }
+// Comentarios por publicación (org_comentarios_piezas): con_palabra = comentaron JESSI / CONTENIDO / GANADORES (o variantes)
+export interface ComentF { pieza_id: string; comentarios: number; con_palabra: number; personas_palabra: number; ultimo: string | null }
 export interface LinkF { slug: string; pieza_id: string; automatizacion: string | null; destino: string; clics: number; ultimo_clic: string | null; contactos: number }
 export type Formato = "reel" | "post" | "historia";
 
@@ -32,16 +34,21 @@ export function fechaHistoria(codigo: string, p?: PiezaIG): string | null {
 const nombreHistoria = (c: string) => c.replace(/^hist(ag)?-/, "").replace(/-?\d{4}-\d{2}-\d{2}$/, "").replace(/-?\d{1,2}[/-]\d{1,2}$/, "") || c;
 const fechaLarga = (d: string) => { const x = new Date(d + "T12:00:00Z"); return `${DIAS[x.getUTCDay()]} ${x.getUTCDate()}/${x.getUTCMonth() + 1}`; };
 
-export function OrganicoFormatos({ formato, from, to, rows, piezas, links, loading, onCreado }: {
-  formato: Formato; from: string; to: string; rows: FilaF[]; piezas: Map<string, PiezaIG>; links: LinkF[]; loading: boolean; onCreado: () => void;
+export function OrganicoFormatos({ formato, from, to, rows, piezas, links, coment, loading, onCreado }: {
+  formato: Formato; from: string; to: string; rows: FilaF[]; piezas: Map<string, PiezaIG>; links: LinkF[]; coment?: Map<string, ComentF>; loading: boolean; onCreado: () => void;
 }) {
   return formato === "historia"
     ? <Historias from={from} to={to} rows={rows} piezas={piezas} links={links} loading={loading} onCreado={onCreado} />
-    : <Publicaciones formato={formato} from={from} to={to} rows={rows} piezas={piezas} loading={loading} />;
+    : <Publicaciones formato={formato} from={from} to={to} rows={rows} piezas={piezas} coment={coment ?? new Map()} loading={loading} />;
 }
 
 // ───────────────────────── Reels y posts ─────────────────────────
-function Publicaciones({ formato, from, to, rows, piezas, loading }: { formato: "reel" | "post"; from: string; to: string; rows: FilaF[]; piezas: Map<string, PiezaIG>; loading: boolean }) {
+// 27-11: antes de esa fecha ManyChat mandaba el mismo link a todos; esos contactos se recuperaron cruzando el usuario de
+// Instagram del quiz con quien comentó la palabra clave en cada publicación (org_atribucion_recuperada). Se marcan con ↺.
+const RECUP_TIT = "Recuperado por comentario: la persona comentó la palabra clave en esta publicación antes de llenar el quiz (cruce del usuario de Instagram del quiz con los comentarios). Desde el 27-11 la atribución es exacta por link único.";
+const Recup = ({ n, de }: { n?: number; de?: number }) => (n ? <span className="recup" title={`${dec1(n)} ${n === 1 ? "contacto recuperado" : "contactos recuperados"} por comentario. ${RECUP_TIT}`}>↺{de != null && n < de ? ` ${dec1(n)}` : ""}</span> : null);
+
+function Publicaciones({ formato, from, to, rows, piezas, coment, loading }: { formato: "reel" | "post"; from: string; to: string; rows: FilaF[]; piezas: Map<string, PiezaIG>; coment: Map<string, ComentF>; loading: boolean }) {
   const [orden, setOrden] = useState<"negocio" | "views" | "fecha">("negocio");
   const porPieza = useMemo(() => new Map(rows.map((r) => [r.pieza, r])), [rows]);
   const lista = useMemo(() => [...piezas.values()].filter((p) => {
@@ -57,7 +64,7 @@ function Publicaciones({ formato, from, to, rows, piezas, loading }: { formato: 
   [lista, orden, porPieza]);
 
   // promedio de contactos por 1.000 vistas del formato en el período (para comparar a los ganadores)
-  const tot = lista.reduce((s, p) => { const r = porPieza.get(p.id); return { v: s.v + (p.views ?? 0), c: s.c + (r?.contactos ?? 0), a: s.a + (r?.agendas ?? 0), $: s.$ + (r?.cash ?? 0) }; }, { v: 0, c: 0, a: 0, $: 0 });
+  const tot = lista.reduce((s, p) => { const r = porPieza.get(p.id); return { v: s.v + (p.views ?? 0), c: s.c + (r?.contactos ?? 0), a: s.a + (r?.agendas ?? 0), $: s.$ + (r?.cash ?? 0), rec: s.rec + (r?.recuperados ?? 0), kw: s.kw + (coment.get(p.id)?.con_palabra ?? 0) }; }, { v: 0, c: 0, a: 0, $: 0, rec: 0, kw: 0 });
   const promMil = tot.v ? (tot.c / tot.v) * 1000 : 0;
   const ganadores = [...lista].filter((p) => (porPieza.get(p.id)?.contactos ?? 0) > 0).sort((a, b) => negocio(b) - negocio(a)).slice(0, 3);
   const nombre = formato === "reel" ? "reels" : "posts";
@@ -67,11 +74,14 @@ function Publicaciones({ formato, from, to, rows, piezas, loading }: { formato: 
       <div className="fmt-resumen">
         <span><b>{num(lista.length)}</b> {nombre} publicados</span>
         <span><b>{compacto(tot.v)}</b> vistas</span>
-        <span><b>{dec1(tot.c)}</b> contactos</span>
+        <span><b>{dec1(tot.c)}</b> contactos{tot.rec ? <span className="muted small" title={RECUP_TIT}> ({dec1(tot.rec)} ↺)</span> : null}</span>
         <span><b>{dec1(tot.a)}</b> agendas</span>
         <span><b>{money(tot.$)}</b> cobrado</span>
+        {tot.kw ? <span title="Comentarios con la palabra clave (JESSI, CONTENIDO, GANADORES): intención aunque no haya llegado al quiz"><b>{num(tot.kw)}</b> comentarios con palabra clave</span> : null}
         <span title="Contactos por cada 1.000 vistas del formato"><b>{promMil ? promMil.toFixed(2).replace(".", ",") : "—"}</b> contactos / 1.000 vistas</span>
       </div>
+
+      <p className="aviso-recup small">↺ Desde el 27-11 la atribución por publicación es exacta; antes se recuperó cruzando comentarios con el usuario del quiz.</p>
 
       <section className="replicar">
         <h3>Qué replicar <span className="muted small">los {nombre} que más negocio trajeron en el período</span></h3>
@@ -87,7 +97,7 @@ function Publicaciones({ formato, from, to, rows, piezas, loading }: { formato: 
                   <div>
                     <div className="rep-titulo">{nombrePiezaIG(p.id, piezas)}</div>
                     <div className="rep-datos">
-                      {r.cash ? <b className="good">{money(r.cash)}</b> : null} <span>{pl(r.agendas, "agenda", "agendas")}</span> <span>{pl(r.contactos, "contacto", "contactos")}</span> <span>{compacto(p.views)} vistas</span>
+                      {r.cash ? <b className="good">{money(r.cash)}</b> : null} <span>{pl(r.agendas, "agenda", "agendas")}</span> <span>{pl(r.contactos, "contacto", "contactos")} <Recup n={r.recuperados} de={r.contactos} /></span> <span>{compacto(p.views)} vistas</span>{coment.get(p.id)?.con_palabra ? <span>{num(coment.get(p.id)!.con_palabra)} con palabra clave</span> : null}
                       {veces && veces >= 1.2 ? <span className="chip chip-kw">{veces.toFixed(1).replace(".", ",")}× el promedio</span> : null}
                     </div>
                     {p.caption ? <div className="rep-caption">“{p.caption.split("\n")[0].slice(0, 140)}”</div> : null}
@@ -121,10 +131,10 @@ function Publicaciones({ formato, from, to, rows, piezas, loading }: { formato: 
                   <span title="Alcance">👥 {compacto(p.alcance)}</span>
                   <span title="Guardados">🔖 {compacto(p.guardados)}</span>
                   <span title="Compartidos">↗ {compacto(p.compartidos)}</span>
-                  <span title="Comentarios">💬 {compacto(p.comentarios)}</span>
+                  <span title={coment.get(p.id)?.con_palabra ? `${num(p.comentarios ?? 0)} comentarios · ${num(coment.get(p.id)!.con_palabra)} con palabra clave (JESSI, CONTENIDO, GANADORES)` : "Comentarios"}>💬 {compacto(p.comentarios)}{coment.get(p.id)?.con_palabra ? <span className="kw"> · {num(coment.get(p.id)!.con_palabra)} 🔑</span> : null}</span>
                 </div>
                 <div className="ig-negocio">
-                  <div><b>{r ? dec1(r.contactos) : "0"}</b><span>contactos</span></div>
+                  <div><b>{r ? dec1(r.contactos) : "0"}<Recup n={r?.recuperados} de={r?.contactos} /></b><span>contactos</span></div>
                   <div><b>{r ? dec1(r.agendas) : "0"}</b><span>agendas</span></div>
                   <div className={r?.cash ? "cobro" : ""}><b>{r?.cash ? money(r.cash) : "—"}</b><span>cobrado</span></div>
                 </div>

@@ -3,7 +3,7 @@ import { supabase } from "../../lib/supabase";
 import { money, num, pct, ratio } from "../../lib/format";
 import { ghlContacto } from "../ui";
 import { OrganicoIG, nombrePiezaIG, type PiezaIG } from "./OrganicoIG";
-import { OrganicoFormatos } from "./OrganicoFormatos";
+import { OrganicoFormatos, type ComentF } from "./OrganicoFormatos";
 
 // Pestaña Orgánico (26-11, solo owners): el "Ads Manager" del contenido. Qué pieza (reel, carrusel, historia, bio,
 // automatización de ManyChat) trajo cada contacto, agenda, asistencia y venta. Se arma con los UTM que GHL guarda en
@@ -11,8 +11,8 @@ import { OrganicoFormatos } from "./OrganicoFormatos";
 // Nunca se mezcla con Ads ni se manda a Meta (regla del dueño 20-10 y 29-10).
 
 type Modelo = "primero" | "ultimo" | "mitad";
-interface Fila { pieza: string; tipo: string; contactos: number; agendas: number; calificadas: number; asistencias: number; ventas: number; cash: number; clics: number; views: number | null }
-interface Contacto { contact_id: string; creado: string; nombre: string | null; email: string | null; telefono: string | null; pieza_primera: string; pieza_ultima: string; slug: string | null; medio: string; facturacion: string | null; en_cohorte: boolean; agendo: boolean; asistio: boolean; califica: boolean; ventas: number; cobrado: number }
+interface Fila { pieza: string; tipo: string; contactos: number; agendas: number; calificadas: number; asistencias: number; ventas: number; cash: number; clics: number; views: number | null; recuperados: number; toques_previos: number }
+interface Contacto { contact_id: string; creado: string; nombre: string | null; email: string | null; telefono: string | null; pieza_primera: string; pieza_ultima: string; slug: string | null; medio: string; facturacion: string | null; en_cohorte: boolean; agendo: boolean; asistio: boolean; califica: boolean; ventas: number; cobrado: number; pieza_original: string | null; recuperado: boolean; confianza: string | null; toque_previo: string | null }
 interface Link { slug: string; pieza_id: string; automatizacion: string | null; destino: string; clics: number; ultimo_clic: string | null; contactos: number }
 interface Conex { whop_ultimo: { ok: boolean; detalle: string; at: string } | null; whop_ok: number; ig_ultimo: { ok: boolean; at: string } | null; pagos: number; pagos_sin_cruzar: number; clics: number; toques_ig: number }
 
@@ -51,6 +51,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
   const [piezas, setPiezas] = useState<Map<string, PiezaIG>>(new Map());
   const [vista, setVista] = useState<"reel" | "post" | "historia" | "tabla">("reel");
   const [recarga, setRecarga] = useState(0);
+  const [coment, setComent] = useState<Map<string, ComentF>>(new Map());
   const nombrePieza = (p: string) => (p === "sin-pieza" ? "Sin pieza identificada" : nombrePiezaIG(p, piezas));
 
   useEffect(() => {
@@ -63,15 +64,17 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
       supabase.rpc("org_links_estado", { desde: from, hasta: to }),
       supabase.rpc("org_conexiones"),
       supabase.from("org_piezas").select("id, tipo, titulo, permalink, thumbnail_url, publicado_at, views, alcance, guardados, compartidos, likes, comentarios, caption"),
-    ]).then(([r, b, l, c, p]) => {
+      supabase.rpc("org_comentarios_piezas"),
+    ]).then(([r, b, l, c, p, k]) => {
       if (!vivo) return;
       const e = r.error ?? b.error ?? l.error ?? c.error;
       if (e) setErr(e.message);
-      setRows(((r.data ?? []) as Fila[]).map((x) => ({ ...x, contactos: +x.contactos, agendas: +x.agendas, calificadas: +x.calificadas, asistencias: +x.asistencias, ventas: +x.ventas, cash: +x.cash, clics: +x.clics, views: x.views == null ? null : +x.views })));
+      setRows(((r.data ?? []) as Fila[]).map((x) => ({ ...x, contactos: +x.contactos, agendas: +x.agendas, calificadas: +x.calificadas, asistencias: +x.asistencias, ventas: +x.ventas, cash: +x.cash, clics: +x.clics, views: x.views == null ? null : +x.views, recuperados: +(x.recuperados ?? 0), toques_previos: +(x.toques_previos ?? 0) })));
       setContactos(((b.data ?? []) as Contacto[]).map((x) => ({ ...x, ventas: +x.ventas, cobrado: +x.cobrado })));
       setLinks(((l.data ?? []) as Link[]).map((x) => ({ ...x, clics: +x.clics, contactos: +x.contactos })));
       setConex((c.data as Conex) ?? null);
       setPiezas(new Map(((p.data ?? []) as PiezaIG[]).map((x) => [x.id, x])));
+      setComent(new Map(((k.data ?? []) as ComentF[]).map((x) => [x.pieza_id, { ...x, comentarios: +x.comentarios, con_palabra: +x.con_palabra, personas_palabra: +x.personas_palabra }])));
       setLoading(false);
     });
     return () => { vivo = false; };
@@ -172,7 +175,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
             {vista === "tabla" ? <>{modelo === "primero" ? "Crédito a la pieza que trajo a la persona por primera vez" : modelo === "ultimo" ? "Crédito a la última pieza antes de agendar" : "Mitad para la primera pieza y mitad para la última"} · toca una fila para ver sus contactos</> : vista === "historia" ? "Historias por día: toques del sticker, contactos, agendas y cobrado" : "Publicados en el período, con sus números de Instagram y lo que trajeron al negocio"}
           </span>
         </div>
-        {vista !== "tabla" && <OrganicoFormatos formato={vista} from={from} to={to} rows={rows} piezas={piezas} links={links} loading={loading} onCreado={() => setRecarga((n) => n + 1)} />}
+        {vista !== "tabla" && <OrganicoFormatos formato={vista} from={from} to={to} rows={rows} piezas={piezas} links={links} coment={coment} loading={loading} onCreado={() => setRecarga((n) => n + 1)} />}
         {vista === "tabla" && <div className="table-wrap">
           <table>
             <thead>
@@ -190,7 +193,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
               {visibles.map((r) => (
                 <tr key={r.pieza} className={`${r.pieza === "sin-pieza" ? "dim" : ""} clic`} style={{ cursor: "pointer", outline: pieza === r.pieza ? "1px solid var(--acc-2)" : undefined }}
                   onClick={() => { setPieza(pieza === r.pieza ? null : r.pieza); setVerContactos(true); }}>
-                  <td className="name"><div className="name-cell">{piezas.get(r.pieza)?.thumbnail_url && <img className="thumb" src={piezas.get(r.pieza)!.thumbnail_url!} alt="" loading="lazy" />}<div><b>{nombrePieza(r.pieza)}</b>{piezas.get(r.pieza)?.permalink && <div><a className="muted small" href={piezas.get(r.pieza)!.permalink!} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>Ver en Instagram</a></div>}</div></div></td>
+                  <td className="name"><div className="name-cell">{piezas.get(r.pieza)?.thumbnail_url && <img className="thumb" src={piezas.get(r.pieza)!.thumbnail_url!} alt="" loading="lazy" />}<div><b>{nombrePieza(r.pieza)}</b>{r.recuperados > 0 && <span className="recup" title="Contactos recuperados por comentario: antes del 27-11 se cruzó el usuario de Instagram del quiz con quien comentó la palabra clave en esta publicación"> ↺ {dec1(r.recuperados)}</span>}{piezas.get(r.pieza)?.permalink && <div><a className="muted small" href={piezas.get(r.pieza)!.permalink!} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>Ver en Instagram</a></div>}</div></div></td>
                   <td>{TIPO_LBL[r.tipo] ?? r.tipo}</td>
                   {COLS.map((c) => <td key={c.key}>{c.fmt(c.get(r))}</td>)}
                 </tr>
@@ -217,7 +220,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
                     <tr key={c.contact_id}>
                       <td className="name">{url ? <a href={url} target="_blank" rel="noreferrer">{c.nombre || c.email || c.contact_id}</a> : c.nombre}</td>
                       <td>{new Date(c.creado).toLocaleDateString("es-CL", { day: "2-digit", month: "short", timeZone: "America/Los_Angeles" })}</td>
-                      <td>{nombrePieza(c.pieza_primera)}</td>
+                      <td>{nombrePieza(c.pieza_primera)}{c.recuperado && <span className="recup" title={`Recuperado por comentario: comentó la palabra clave en esta publicación antes de llenar el quiz (antes figuraba como "${c.pieza_original}"; confianza ${c.confianza})`}> ↺</span>}{c.toque_previo && <span className="muted small" title="Comentó en esta publicación en los 7 días antes de entrar (toque previo; no cambia el crédito)"> · comentó en {nombrePieza(c.toque_previo)}</span>}</td>
                       <td>{c.pieza_ultima === c.pieza_primera ? "—" : nombrePieza(c.pieza_ultima)}</td>
                       <td>{c.agendo ? "Sí" : "—"}</td>
                       <td>{c.asistio ? "Sí" : "—"}</td>
