@@ -89,6 +89,19 @@ async function post(path: string, body: unknown) {
   return j;
 }
 
+// {nombre}: nombre de pila del perfil (si Instagram lo entrega) → si no, @usuario → si no, vacío ("¡Hola!")
+async function nombreDe(igsid: string | null, username: string | null): Promise<string> {
+  if (igsid) {
+    try {
+      const p = await get(`${igsid}?fields=name,username`);
+      const pila = String(p?.name ?? "").trim().split(/\s+/)[0] ?? "";
+      if (pila && /\p{L}/u.test(pila)) return pila.charAt(0).toUpperCase() + pila.slice(1).toLowerCase();
+      if (p?.username) return `@${p.username}`;
+    } catch (e) { console.error("nombre", String(e)); }
+  }
+  return username ? `@${username}` : "";
+}
+
 // paso 2: la persona tocó el botón (postback / respuesta rápida) o respondió el DM de apertura → DM con el link único
 const SEL = "id, slug, lead_id, automatizacion_id, username";
 async function pasoDos(o: { senderId: string; leadId: number; payload?: string | null }): Promise<boolean> {
@@ -144,7 +157,8 @@ async function automatizar(o: { disparador: "comentario" | "dm" | "historia"; te
     const pieza = o.pieza ?? `auto-${a.nombre.toLowerCase()}`;
     if (!o.pieza) await sb.from("org_piezas").upsert({ id: pieza, tipo: "dm", titulo: `Automatización ${a.nombre}` }, { onConflict: "id", ignoreDuplicates: true });
     const { data: slug } = await sb.rpc("org_crear_link", { p_pieza: pieza, p_lead: o.lead.id, p_destino: a.destino, p_auto: a.nombre, p_medium: o.disparador === "comentario" ? "comentario" : "dm" });
-    const llenar = (m: string) => String(m ?? "").replaceAll("{link}", LINK + slug).replaceAll("{nombre}", o.lead.ig_username ? `@${o.lead.ig_username}` : "").replaceAll("{palabra}", (palabra || "").toUpperCase()).replace(/[ \t]+([!,.])/g, "$1");
+    const nombre = await nombreDe(o.senderId ?? o.igId ?? null, o.lead.ig_username);
+    const llenar = (m: string) => String(m ?? "").replaceAll("{link}", LINK + slug).replaceAll("{nombre}", nombre).replaceAll("{palabra}", (palabra || "").toUpperCase()).replace(/[ \t]+([!,.])/g, "$1");
     const recipient = o.comentarioId ? { comment_id: o.comentarioId } : { id: o.senderId };
     let error: string | null = null;
     let texto = llenar(a.mensaje);
