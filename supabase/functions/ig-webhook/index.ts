@@ -102,49 +102,6 @@ async function nombreDe(igsid: string | null, username: string | null): Promise<
   return username ? `@${username}` : "";
 }
 
-// paso 2: la persona tocó el botón (postback / respuesta rápida) o respondió el DM de apertura → DM con el link único
-const SEL = "id, slug, lead_id, automatizacion_id, username";
-async function pasoDos(o: { senderId: string; leadId: number; payload?: string | null }): Promise<boolean> {
-  const desde = new Date(Date.now() - 7 * 864e5).toISOString();
-  const base = () => sb.from("org_mensajes").select(SEL).eq("paso", 1).eq("ok", true).not("slug", "is", null).gte("enviado_at", desde).order("id", { ascending: false }).limit(1);
-  const m = /^AUTO2:(\d+)$/.exec(o.payload ?? "");
-  let { data } = m ? await base().eq("id", Number(m[1])) : await base().or(`lead_id.eq.${o.leadId},ig_sender.eq.${o.senderId}`);
-  if (!data?.length && !m) {
-    // el id de quien comenta y el de quien escribe por DM pueden no coincidir: buscar por usuario
-    try {
-      const u = await get(`${o.senderId}?fields=username`);
-      if (u?.username) {
-        await sb.from("org_leads").update({ ig_username: u.username }).eq("id", o.leadId).is("ig_username", null);
-        ({ data } = await base().eq("username", u.username));
-      }
-    } catch (e) { console.error("username", String(e)); }
-  }
-  const fila = (data as any[])?.[0];
-  if (!fila) return false;
-  // candado: un solo envío del paso 2 (Meta reintenta)
-  const { data: tomado } = await sb.from("org_mensajes").update({ paso: 2, ig_sender: o.senderId }).eq("id", fila.id).eq("paso", 1).select("id");
-  if (!tomado?.length) return true;
-  const { data: a } = await sb.from("org_automatizaciones").select("*").eq("id", fila.automatizacion_id).single();
-  const url = LINK + fila.slug;
-  const texto = String(a?.mensaje ?? "{link}").replaceAll("{nombre}", fila.username ? `@${fila.username}` : "").replaceAll("{palabra}", "").replace(/[ \t]+([!,.])/g, "$1");
-  let error: string | null = null;
-  try {
-    if (a?.boton_link) {
-      const t = texto.replaceAll("{link}", "").trim();
-      try {
-        await post("me/messages", { recipient: { id: o.senderId }, message: { attachment: { type: "template", payload: { template_type: "button", text: t.slice(0, 640), buttons: [{ type: "web_url", title: String(a.boton_link).slice(0, 20), url }] } } } });
-      } catch (e1) {
-        console.error("link con botón", String(e1));
-        await post("me/messages", { recipient: { id: o.senderId }, message: { text: `${t}\n\n${a.boton_link}: ${url}` } });
-      }
-    } else {
-      await post("me/messages", { recipient: { id: o.senderId }, message: { text: texto.replaceAll("{link}", url) } });
-    }
-  } catch (e) { error = String(e).slice(0, 300); }
-  await sb.from("org_mensajes").update(error ? { paso: 1, error2: error } : { link_enviado_at: new Date().toISOString(), error2: null }).eq("id", fila.id);
-  return true;
-}
-
 async function automatizar(o: { disparador: "comentario" | "dm" | "historia"; texto: string; pieza: string | null; lead: { id: number; ig_username: string | null }; comentarioId?: string; senderId?: string; igId?: string; eventoId: string }) {
   const { data: autos } = await sb.from("org_automatizaciones").select("*").eq("activa", true).eq("disparador", o.disparador);
   for (const a of autos ?? []) {
@@ -165,11 +122,11 @@ async function automatizar(o: { disparador: "comentario" | "dm" | "historia"; te
     let paso = 1;
     try {
       if (a.mensaje_apertura && a.boton_apertura) {
-        // flujo de 2 pasos (como ManyChat): DM de apertura con botón → al tocarlo (o responder) va el DM con el link
+        // flujo de 2 pasos (como ManyChat): DM de apertura con respuesta rápida → al tocarla (o responder) ig-respuestas manda el link
         texto = llenar(a.mensaje_apertura);
         const titulos = [String(a.boton_apertura), corto(String(a.boton_apertura))].filter((t, i, arr) => arr.indexOf(t) === i);
-        // primero respuesta rápida: el toque llega por el campo "messages" (ya suscrito); el botón de plantilla necesita
-        // "messaging_postbacks", que no se puede activar mientras la cuenta de desarrollador esté bloqueada (27-11)
+        // primero respuesta rápida: el toque llega como mensaje; el botón de plantilla necesita "messaging_postbacks"
+        // (no activable con la cuenta de desarrollador bloqueada, 27-11) y además Instagram lo muestra sin botón
         const intentos = [
           { text: texto.slice(0, 1000), quick_replies: [{ content_type: "text", title: corto(String(a.boton_apertura)), payload: `AUTO2:${fila.id}` }] },
           ...titulos.map((title) => ({ attachment: { type: "template", payload: { template_type: "button", text: texto.slice(0, 640), buttons: [{ type: "postback", title, payload: `AUTO2:${fila.id}` }] } } })),
@@ -223,11 +180,12 @@ async function procesar(j: any) {
       const at = new Date(m.timestamp ?? Date.now()).toISOString();
       const id = `m:${msg?.mid ?? m.timestamp}`;
       const texto = String(msg?.text ?? m.postback?.title ?? "");
-      // botón del DM de apertura (o respuesta a él) → DM con el link
       const payload = m.postback?.payload ?? msg?.quick_reply?.payload ?? null;
+      // 27-11: el link lo manda SOLO ig-respuestas (cron cada minuto, texto con link, una vez por persona).
+      // Si es respuesta a una apertura pendiente, se registra el toque y no se dispara otra automatización.
       if (payload || msg?.text) {
-        const hecho = await pasoDos({ senderId: String(m.sender.id), leadId: L.id, payload });
-        if (hecho) { await toque({ lead_id: L.id, tipo: "dm_respuesta", nivel: "B", ig_event_id: id, texto: texto.slice(0, 500), ocurrio_at: at }); continue; }
+        const { count: pendiente } = await sb.from("org_mensajes").select("id", { count: "exact", head: true }).eq("paso", 1).or(`lead_id.eq.${L.id},ig_sender.eq.${m.sender.id}`);
+        if (pendiente || /^AUTO2:/.test(payload ?? "")) { await toque({ lead_id: L.id, tipo: "dm_respuesta", nivel: "B", ig_event_id: id, texto: texto.slice(0, 500), ocurrio_at: at }); continue; }
       }
       const ref = m.referral ?? msg?.referral;
       if (ref?.ad_id) { await toque({ lead_id: L.id, tipo: "anuncio", nivel: "A", ig_event_id: id, texto: `ad ${ref.ad_id}`, ocurrio_at: at }); continue; }
