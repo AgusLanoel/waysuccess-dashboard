@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { money, num, pct, ratio } from "../../lib/format";
 import { ghlContacto } from "../ui";
+import { OrganicoIG, nombrePiezaIG, type PiezaIG } from "./OrganicoIG";
 
 // Pestaña Orgánico (26-11, solo owners): el "Ads Manager" del contenido. Qué pieza (reel, carrusel, historia, bio,
 // automatización de ManyChat) trajo cada contacto, agenda, asistencia y venta. Se arma con los UTM que GHL guarda en
@@ -33,7 +34,6 @@ const COLS: ColDef[] = [
 ];
 
 const TIPO_LBL: Record<string, string> = { historia: "Historia", bio: "Bio", dm: "DM", reel: "Reel", carrusel: "Carrusel", post: "Post", "sin origen": "Sin origen", otro: "Otro" };
-const nombrePieza = (p: string) => (p === "sin-pieza" ? "Sin pieza identificada" : p === "link_in_bio" ? "Link de la bio" : p);
 
 export function Organico({ from, to, reloadKey }: { from: string; to: string; reloadKey: number }) {
   const [modelo, setModelo] = useState<Modelo>("primero");
@@ -47,6 +47,8 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
   const [pieza, setPieza] = useState<string | null>(null);
   const [verContactos, setVerContactos] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
+  const [piezas, setPiezas] = useState<Map<string, PiezaIG>>(new Map());
+  const nombrePieza = (p: string) => (p === "sin-pieza" ? "Sin pieza identificada" : nombrePiezaIG(p, piezas));
 
   useEffect(() => {
     let vivo = true;
@@ -57,7 +59,8 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
       supabase.rpc("org_base", { desde: from, hasta: to }),
       supabase.rpc("org_links_estado", { desde: from, hasta: to }),
       supabase.rpc("org_conexiones"),
-    ]).then(([r, b, l, c]) => {
+      supabase.from("org_piezas").select("id, tipo, titulo, permalink, thumbnail_url, publicado_at"),
+    ]).then(([r, b, l, c, p]) => {
       if (!vivo) return;
       const e = r.error ?? b.error ?? l.error ?? c.error;
       if (e) setErr(e.message);
@@ -65,6 +68,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
       setContactos(((b.data ?? []) as Contacto[]).map((x) => ({ ...x, ventas: +x.ventas, cobrado: +x.cobrado })));
       setLinks(((l.data ?? []) as Link[]).map((x) => ({ ...x, clics: +x.clics, contactos: +x.contactos })));
       setConex((c.data as Conex) ?? null);
+      setPiezas(new Map(((p.data ?? []) as PiezaIG[]).map((x) => [x.id, x])));
       setLoading(false);
     });
     return () => { vivo = false; };
@@ -145,7 +149,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
               {visibles.map((r) => (
                 <tr key={r.pieza} className={`${r.pieza === "sin-pieza" ? "dim" : ""} clic`} style={{ cursor: "pointer", outline: pieza === r.pieza ? "1px solid var(--acc-2)" : undefined }}
                   onClick={() => { setPieza(pieza === r.pieza ? null : r.pieza); setVerContactos(true); }}>
-                  <td className="name"><div className="name-cell"><div><b>{nombrePieza(r.pieza)}</b></div></div></td>
+                  <td className="name"><div className="name-cell">{piezas.get(r.pieza)?.thumbnail_url && <img className="thumb" src={piezas.get(r.pieza)!.thumbnail_url!} alt="" loading="lazy" />}<div><b>{nombrePieza(r.pieza)}</b>{piezas.get(r.pieza)?.permalink && <div><a className="muted small" href={piezas.get(r.pieza)!.permalink!} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>Ver en Instagram</a></div>}</div></div></td>
                   <td>{TIPO_LBL[r.tipo] ?? r.tipo}</td>
                   {COLS.map((c) => <td key={c.key}>{c.fmt(c.get(r))}</td>)}
                 </tr>
@@ -187,6 +191,8 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
           </div>
         </section>
       )}
+
+      <OrganicoIG from={from} to={to} reloadKey={reloadKey} piezas={piezas} />
 
       <section className="card table-card">
         <div className="table-head"><b>Links cortos para usar en ManyChat, bio e historias</b><span className="muted" style={{ fontSize: ".8rem" }}>Cada clic queda registrado y la agenda queda unida a su pieza</span></div>

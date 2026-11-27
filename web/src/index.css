@@ -261,3 +261,11 @@ table.agendas th.name, table.agendas td.name { min-width: 160px; font-weight: 60
 .cc-wrap > .cc-grid { margin-bottom: 0; }
 .cc-fathom { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; }
 @media (max-width: 520px) { .cc-fathom { grid-template-columns: 1fr; } }
+
+/* 27-11 Orgánico · automatizaciones de Instagram */
+.auto-form { display: grid; gap: 10px; padding: 12px 14px 16px; border-top: 1px solid var(--border); max-width: 720px; }
+.auto-form input:not([type="checkbox"]), .auto-form select, .auto-form textarea {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%;
+}
+.auto-form .fila { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+label.fila { display: flex; }
