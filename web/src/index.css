@@ -380,3 +380,51 @@ tr.detalle .timeline { display: flex; flex-direction: column; align-items: stret
 .dm-yo { justify-self: end; max-width: 80%; background: var(--surface-2); border: 1px solid var(--border); padding: 7px 12px; border-radius: 16px 16px 4px 16px; font-size: 13px; }
 .dm-bubble.clamp3 { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 .dm-bubble.clamp3 .dm-btn { display: none; }
+
+/* 27-11 secciones por formato: Reels / Posts / Historias con "Qué replicar" */
+.formato { display: grid; gap: 14px; padding: 4px 2px; }
+.formatos-tabs button { font-weight: 600; }
+.fmt-resumen { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--text-2); }
+.fmt-resumen b { color: var(--text); font-size: 15px; margin-right: 3px; }
+.fmt-head { display: flex; justify-content: flex-end; }
+.replicar { border: 1px solid color-mix(in srgb, var(--good) 40%, var(--border)); background: color-mix(in srgb, var(--good) 6%, var(--surface)); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; }
+.replicar h3 { margin: 0; font-size: 15px; }
+.replicar ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: rep; }
+.replicar li { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; counter-increment: rep; }
+.rep-media { width: 54px; aspect-ratio: 4 / 5; border-radius: 8px; overflow: hidden; background: var(--surface-2); display: block; position: relative; }
+.rep-media img { width: 100%; height: 100%; object-fit: cover; }
+.rep-media::after { content: counter(rep); position: absolute; top: 3px; left: 3px; background: rgb(0 0 0 / .65); color: #fff; font-size: 11px; font-weight: 700; border-radius: 999px; width: 18px; height: 18px; display: grid; place-items: center; }
+.rep-dia { min-width: 92px; font-weight: 700; font-size: 13px; text-transform: capitalize; }
+.rep-titulo { font-weight: 600; font-size: 14px; line-height: 1.3; }
+.rep-datos { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--text-2); margin-top: 2px; align-items: center; }
+.rep-caption { font-size: 12px; color: var(--muted); margin-top: 3px; font-style: italic; }
+.rep-dias { margin: 0; color: var(--text-2); }
+.good { color: var(--good); }
+.nuevo-link { padding: 14px; display: grid; gap: 8px; }
+.nuevo-link h3 { margin: 0; font-size: 15px; }
+.nuevo-link p { margin: 0; }
+.nl-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.nl-form label { display: grid; gap: 4px; font-size: 12px; color: var(--text-2); }
+.nl-form input { min-width: 180px; }
+.nl-ok { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--good) 10%, var(--surface)); }
+.nl-ok code { font-size: 14px; font-weight: 700; }
+.hist-dias { display: grid; gap: 10px; }
+.hist-dia { padding: 10px 12px; overflow-x: auto; }
+.hist-dia header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin-bottom: 6px; }
+.hist-dia header b { text-transform: capitalize; }
+.hist-dia table { width: 100%; }
+@media (max-width: 640px) {
+  .fmt-resumen { gap: 4px 12px; }
+  .nl-form input { min-width: 0; width: 100%; }
+  .nl-form label { flex: 1 1 140px; }
+  .hist-dia th:nth-child(5), .hist-dia td:nth-child(5) { display: none; }
+}
+.nl-form input { font: inherit; font-size: 14px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; height: 38px; box-sizing: border-box; }
+.nl-form button { height: 38px; }
+.hist-dia table { table-layout: fixed; border-collapse: collapse; }
+.hist-dia th, .hist-dia td { text-align: right; padding: 8px 10px; }
+.hist-dia th.name, .hist-dia td.name { text-align: left; width: 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-dia th:last-child, .hist-dia td:last-child { width: 110px; }
+@media (max-width: 640px) { .hist-dia th.name, .hist-dia td.name { width: 30%; } .hist-dia th:last-child, .hist-dia td:last-child { width: 78px; } .hist-dia th, .hist-dia td { padding: 6px 4px; font-size: 12px; } }
+.t-corto { display: none; }
+@media (max-width: 640px) { .t-largo { display: none; } .t-corto { display: inline; } }

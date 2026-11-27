@@ -10,7 +10,7 @@ import { ghlContacto } from "../ui";
 export interface PiezaIG {
   id: string; tipo: string | null; titulo: string | null; permalink: string | null; thumbnail_url: string | null; publicado_at: string | null;
   views: number | null; alcance: number | null; guardados: number | null; compartidos: number | null; likes: number | null; comentarios: number | null;
-}
+ caption?: string | null; }
 interface LeadIG { lead_id: number; usuario: string | null; nombre: string | null; primer_toque: string; ultimo_toque: string; toques: number; pieza_primera: string | null; ultimo_tipo: string | null; ultimo_texto: string | null; link: string | null; ghl_contact_id: string | null; agendo: boolean; cobrado: number }
 interface Auto { id: number | null; nombre: string; disparador: "comentario" | "dm" | "historia"; palabras: string[]; pieza_id: string | null; respuesta_publica: string | null; mensaje: string; destino: string; activa: boolean; mensaje_apertura?: string | null; boton_apertura?: string | null; boton_link?: string | null; enviados?: number; fallidos?: number; links?: number; clics?: number; ultimo_envio?: string | null; ultimo_error?: string | null }
 interface Estado { conectada: boolean; usuario: string | null; token_vence: string | null; ultimo_sync: { ok: boolean; at: string; detalle: string } | null; ultimo_evento: string | null; leads: number; toques: number; piezas_ig: number; mensajes: number }

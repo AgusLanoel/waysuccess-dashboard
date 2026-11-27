@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase";
 import { money, num, pct, ratio } from "../../lib/format";
 import { ghlContacto } from "../ui";
 import { OrganicoIG, nombrePiezaIG, type PiezaIG } from "./OrganicoIG";
+import { OrganicoFormatos } from "./OrganicoFormatos";
 
 // Pestaña Orgánico (26-11, solo owners): el "Ads Manager" del contenido. Qué pieza (reel, carrusel, historia, bio,
 // automatización de ManyChat) trajo cada contacto, agenda, asistencia y venta. Se arma con los UTM que GHL guarda en
@@ -48,8 +49,8 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
   const [verContactos, setVerContactos] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
   const [piezas, setPiezas] = useState<Map<string, PiezaIG>>(new Map());
-  const [vista, setVista] = useState<"tabla" | "grilla">("grilla");
-  const [ordenG, setOrdenG] = useState<"views" | "cash" | "contactos" | "fecha">("views");
+  const [vista, setVista] = useState<"reel" | "post" | "historia" | "tabla">("reel");
+  const [recarga, setRecarga] = useState(0);
   const nombrePieza = (p: string) => (p === "sin-pieza" ? "Sin pieza identificada" : nombrePiezaIG(p, piezas));
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
       supabase.rpc("org_base", { desde: from, hasta: to }),
       supabase.rpc("org_links_estado", { desde: from, hasta: to }),
       supabase.rpc("org_conexiones"),
-      supabase.from("org_piezas").select("id, tipo, titulo, permalink, thumbnail_url, publicado_at, views, alcance, guardados, compartidos, likes, comentarios"),
+      supabase.from("org_piezas").select("id, tipo, titulo, permalink, thumbnail_url, publicado_at, views, alcance, guardados, compartidos, likes, comentarios, caption"),
     ]).then(([r, b, l, c, p]) => {
       if (!vivo) return;
       const e = r.error ?? b.error ?? l.error ?? c.error;
@@ -74,7 +75,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
       setLoading(false);
     });
     return () => { vivo = false; };
-  }, [from, to, modelo, reloadKey]);
+  }, [from, to, modelo, reloadKey, recarga]);
 
   const visibles = useMemo(() => {
     const col = COLS.find((c) => c.key === sort.key);
@@ -111,11 +112,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
       porMilCash: v ? (t.cash / v) * 1000 : null, porMilContactos: v ? (t.contactos / v) * 1000 : null,
     };
   }, [publicadas, t]);
-  const porPieza = useMemo(() => new Map(rows.map((r) => [r.pieza, r])), [rows]);
-  const grilla = useMemo(() => {
-    const val = (p: PiezaIG) => ordenG === "views" ? p.views ?? 0 : ordenG === "cash" ? porPieza.get(p.id)?.cash ?? 0 : ordenG === "contactos" ? porPieza.get(p.id)?.contactos ?? 0 : new Date(p.publicado_at ?? 0).getTime();
-    return [...publicadas].sort((a, b) => val(b) - val(a));
-  }, [publicadas, porPieza, ordenG]);
+
   const compacto = (n: number | null | undefined) => (n == null ? "—" : n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(".", ",")} M` : n >= 1e4 ? `${Math.round(n / 1e3)} mil` : num(n));
 
   const kpis: [string, string, string?][] = [
@@ -163,54 +160,19 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
 
       <section className="card table-card">
         <div className="table-head">
-          <div className="seg" role="tablist" aria-label="Vista">
-            <button className={vista === "grilla" ? "on" : ""} onClick={() => setVista("grilla")}>▦ Publicaciones</button>
-            <button className={vista === "tabla" ? "on" : ""} onClick={() => setVista("tabla")}>☰ Todas las piezas</button>
+          <div className="seg formatos-tabs" role="tablist" aria-label="Formato">
+            {([["reel", "🎬 Reels"], ["post", "🖼 Posts"], ["historia", "⏱ Historias"], ["tabla", "☰ Todas las piezas"]] as const).map(([k, l]) => (
+              <button key={k} role="tab" aria-selected={vista === k} className={vista === k ? "on" : ""} onClick={() => setVista(k)}>{l}</button>
+            ))}
           </div>
-          {vista === "grilla" ? (
-            <div className="seg" role="tablist" aria-label="Ordenar">
-              {([["views", "Más vistas"], ["cash", "Más cobrado"], ["contactos", "Más contactos"], ["fecha", "Recientes"]] as const).map(([k, l]) => <button key={k} className={ordenG === k ? "on" : ""} onClick={() => setOrdenG(k)}>{l}</button>)}
-            </div>
-          ) : null}
           {vista === "tabla" && <div className="seg" role="tablist" aria-label="Modelo de atribución">
             {MODELOS.map(([k, l]) => <button key={k} className={modelo === k ? "on" : ""} onClick={() => setModelo(k)}>{l}</button>)}
           </div>}
           <span className="muted" style={{ fontSize: ".8rem" }}>
-            {vista === "grilla" ? "Publicaciones del período con sus números de Instagram y lo que trajeron al negocio · historias y bio en “Todas las piezas”" : <>{modelo === "primero" ? "Crédito a la pieza que trajo a la persona por primera vez" : modelo === "ultimo" ? "Crédito a la última pieza antes de agendar" : "Mitad para la primera pieza y mitad para la última"} · toca una fila para ver sus contactos</>}
+            {vista === "tabla" ? <>{modelo === "primero" ? "Crédito a la pieza que trajo a la persona por primera vez" : modelo === "ultimo" ? "Crédito a la última pieza antes de agendar" : "Mitad para la primera pieza y mitad para la última"} · toca una fila para ver sus contactos</> : vista === "historia" ? "Historias por día: toques del sticker, contactos, agendas y cobrado" : "Publicados en el período, con sus números de Instagram y lo que trajeron al negocio"}
           </span>
         </div>
-        {vista === "grilla" && (
-          <div className="ig-grid">
-            {grilla.map((p) => {
-              const r = porPieza.get(p.id);
-              return (
-                <article key={p.id} className="ig-card">
-                  <a className="ig-media" href={p.permalink!} target="_blank" rel="noreferrer">
-                    {p.thumbnail_url ? <img src={p.thumbnail_url} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <div className="ig-sin-img">Sin imagen</div>}
-                    <span className={`ig-tipo t-${p.tipo}`}>{TIPO_LBL[p.tipo ?? ""] ?? p.tipo}</span>
-                    <span className="ig-views">▶ {compacto(p.views)}</span>
-                  </a>
-                  <div className="ig-body">
-                    <div className="muted small">{p.publicado_at ? new Date(p.publicado_at).toLocaleDateString("es-CL", { day: "2-digit", month: "short" }) : ""}</div>
-                    <div className="ig-titulo">{nombrePieza(p.id)}</div>
-                    <div className="ig-metr">
-                      <span title="Alcance">👥 {compacto(p.alcance)}</span>
-                      <span title="Guardados">🔖 {compacto(p.guardados)}</span>
-                      <span title="Compartidos">↗ {compacto(p.compartidos)}</span>
-                      <span title="Comentarios">💬 {compacto(p.comentarios)}</span>
-                    </div>
-                    <div className="ig-negocio">
-                      <div><b>{r ? dec1(r.contactos) : "0"}</b><span>contactos</span></div>
-                      <div><b>{r ? dec1(r.agendas) : "0"}</b><span>agendas</span></div>
-                      <div className={r?.cash ? "cobro" : ""}><b>{r?.cash ? money(r.cash) : "—"}</b><span>cobrado</span></div>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-            {!grilla.length && !loading && <p className="vacio">No hay publicaciones de Instagram en este período. Las historias, la bio y ManyChat están en “Todas las piezas”.</p>}
-          </div>
-        )}
+        {vista !== "tabla" && <OrganicoFormatos formato={vista} from={from} to={to} rows={rows} piezas={piezas} links={links} loading={loading} onCreado={() => setRecarga((n) => n + 1)} />}
         {vista === "tabla" && <div className="table-wrap">
           <table>
             <thead>
