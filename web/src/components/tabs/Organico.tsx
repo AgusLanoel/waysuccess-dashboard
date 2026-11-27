@@ -48,6 +48,8 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
   const [verContactos, setVerContactos] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
   const [piezas, setPiezas] = useState<Map<string, PiezaIG>>(new Map());
+  const [vista, setVista] = useState<"tabla" | "grilla">("grilla");
+  const [ordenG, setOrdenG] = useState<"views" | "cash" | "contactos" | "fecha">("views");
   const nombrePieza = (p: string) => (p === "sin-pieza" ? "Sin pieza identificada" : nombrePiezaIG(p, piezas));
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
       supabase.rpc("org_base", { desde: from, hasta: to }),
       supabase.rpc("org_links_estado", { desde: from, hasta: to }),
       supabase.rpc("org_conexiones"),
-      supabase.from("org_piezas").select("id, tipo, titulo, permalink, thumbnail_url, publicado_at"),
+      supabase.from("org_piezas").select("id, tipo, titulo, permalink, thumbnail_url, publicado_at, views, alcance, guardados, compartidos, likes, comentarios"),
     ]).then(([r, b, l, c, p]) => {
       if (!vivo) return;
       const e = r.error ?? b.error ?? l.error ?? c.error;
@@ -94,6 +96,28 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
   }, [contactos, links]);
   const mejor = visibles.find((r) => r.pieza !== "sin-pieza" && r.cash > 0);
 
+  // Contenido publicado en el período (fecha de publicación en Los Ángeles, igual que el resto del dashboard)
+  const publicadas = useMemo(() => [...piezas.values()].filter((p) => {
+    if (!p.id.startsWith("ig-") || !p.permalink || !p.publicado_at) return false;
+    const d = new Date(p.publicado_at).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+    return d >= from && d <= to;
+  }), [piezas, from, to]);
+  const c = useMemo(() => {
+    const v = publicadas.reduce((s, p) => s + (p.views ?? 0), 0);
+    return {
+      n: publicadas.length, reels: publicadas.filter((p) => p.tipo === "reel").length, views: v,
+      alcance: publicadas.reduce((s, p) => s + (p.alcance ?? 0), 0),
+      guardados: publicadas.reduce((s, p) => s + (p.guardados ?? 0), 0), compartidos: publicadas.reduce((s, p) => s + (p.compartidos ?? 0), 0),
+      porMilCash: v ? (t.cash / v) * 1000 : null, porMilContactos: v ? (t.contactos / v) * 1000 : null,
+    };
+  }, [publicadas, t]);
+  const porPieza = useMemo(() => new Map(rows.map((r) => [r.pieza, r])), [rows]);
+  const grilla = useMemo(() => {
+    const val = (p: PiezaIG) => ordenG === "views" ? p.views ?? 0 : ordenG === "cash" ? porPieza.get(p.id)?.cash ?? 0 : ordenG === "contactos" ? porPieza.get(p.id)?.contactos ?? 0 : new Date(p.publicado_at ?? 0).getTime();
+    return [...publicadas].sort((a, b) => val(b) - val(a));
+  }, [publicadas, porPieza, ordenG]);
+  const compacto = (n: number | null | undefined) => (n == null ? "—" : n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(".", ",")} M` : n >= 1e4 ? `${Math.round(n / 1e3)} mil` : num(n));
+
   const kpis: [string, string, string?][] = [
     ["Cobrado orgánico", money(t.cash), `${num(t.ventas)} cierres${mejor ? ` · la que más cobró: ${nombrePieza(mejor.pieza)}` : ""}`],
     ["Contactos nuevos", num(t.contactos), `${pct(ratio(t.sinPieza, t.contactos), 0)} sin pieza identificada (${num(t.sinPieza)})`],
@@ -113,26 +137,81 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
     <div className="ads-scroll">
       {err && <p className="error">Error: {err}</p>}
 
-      <section className="kpis" aria-busy={loading}>
-        {kpis.map(([label, value, sub]) => (
-          <div key={label} className="kpi">
-            <div className="kpi-label">{label}</div>
-            <div className="kpi-value">{value}</div>
-            {sub && <div className="kpi-sub">{sub}</div>}
+      <div className="kpi-groups org-groups">
+        <section className="kpi-group" style={{ ["--tone" as string]: "#C9A0FF" }} aria-busy={loading}>
+          <h3 className="kpi-group-title">Contenido publicado en el período</h3>
+          <div className="kpis">
+            <div className="kpi"><div className="kpi-label">Vistas</div><div className="kpi-value">{compacto(c.views)}</div><div className="kpi-sub">{num(c.n)} publicaciones · {num(c.reels)} reels</div></div>
+            <div className="kpi"><div className="kpi-label">Alcance</div><div className="kpi-value">{compacto(c.alcance)}</div><div className="kpi-sub">cuentas únicas</div></div>
+            <div className="kpi"><div className="kpi-label">Guardados + compartidos</div><div className="kpi-value">{compacto(c.guardados + c.compartidos)}</div><div className="kpi-sub">{compacto(c.guardados)} guardados · {compacto(c.compartidos)} compartidos</div></div>
+            <div className="kpi destacado"><div className="kpi-label">Cobrado por 1.000 vistas</div><div className="kpi-value">{c.porMilCash == null ? "—" : money(c.porMilCash)}</div><div className="kpi-sub">{c.porMilContactos == null ? "" : `${c.porMilContactos.toFixed(2).replace(".", ",")} contactos por 1.000 vistas`}</div></div>
           </div>
-        ))}
-      </section>
+        </section>
+        <section className="kpi-group" style={{ ["--tone" as string]: "#5DCAA5" }} aria-busy={loading}>
+          <h3 className="kpi-group-title">Resultado comercial (mismas reglas que el Resumen)</h3>
+          <div className="kpis">
+            {kpis.filter(([l]) => l !== "Clics en links").map(([label, value, sub]) => (
+              <div key={label} className="kpi">
+                <div className="kpi-label">{label}</div>
+                <div className="kpi-value">{value}</div>
+                {sub && <div className="kpi-sub">{sub}</div>}
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
 
       <section className="card table-card">
         <div className="table-head">
-          <div className="seg" role="tablist" aria-label="Modelo de atribución">
-            {MODELOS.map(([k, l]) => <button key={k} className={modelo === k ? "on" : ""} onClick={() => setModelo(k)}>{l}</button>)}
+          <div className="seg" role="tablist" aria-label="Vista">
+            <button className={vista === "grilla" ? "on" : ""} onClick={() => setVista("grilla")}>▦ Publicaciones</button>
+            <button className={vista === "tabla" ? "on" : ""} onClick={() => setVista("tabla")}>☰ Todas las piezas</button>
           </div>
+          {vista === "grilla" ? (
+            <div className="seg" role="tablist" aria-label="Ordenar">
+              {([["views", "Más vistas"], ["cash", "Más cobrado"], ["contactos", "Más contactos"], ["fecha", "Recientes"]] as const).map(([k, l]) => <button key={k} className={ordenG === k ? "on" : ""} onClick={() => setOrdenG(k)}>{l}</button>)}
+            </div>
+          ) : null}
+          {vista === "tabla" && <div className="seg" role="tablist" aria-label="Modelo de atribución">
+            {MODELOS.map(([k, l]) => <button key={k} className={modelo === k ? "on" : ""} onClick={() => setModelo(k)}>{l}</button>)}
+          </div>}
           <span className="muted" style={{ fontSize: ".8rem" }}>
-            {modelo === "primero" ? "Crédito a la pieza que trajo a la persona por primera vez" : modelo === "ultimo" ? "Crédito a la última pieza antes de agendar" : "Mitad para la primera pieza y mitad para la última"} · toca una fila para ver sus contactos
+            {vista === "grilla" ? "Publicaciones del período con sus números de Instagram y lo que trajeron al negocio · historias y bio en “Todas las piezas”" : <>{modelo === "primero" ? "Crédito a la pieza que trajo a la persona por primera vez" : modelo === "ultimo" ? "Crédito a la última pieza antes de agendar" : "Mitad para la primera pieza y mitad para la última"} · toca una fila para ver sus contactos</>}
           </span>
         </div>
-        <div className="table-wrap">
+        {vista === "grilla" && (
+          <div className="ig-grid">
+            {grilla.map((p) => {
+              const r = porPieza.get(p.id);
+              return (
+                <article key={p.id} className="ig-card">
+                  <a className="ig-media" href={p.permalink!} target="_blank" rel="noreferrer">
+                    {p.thumbnail_url ? <img src={p.thumbnail_url} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <div className="ig-sin-img">Sin imagen</div>}
+                    <span className={`ig-tipo t-${p.tipo}`}>{TIPO_LBL[p.tipo ?? ""] ?? p.tipo}</span>
+                    <span className="ig-views">▶ {compacto(p.views)}</span>
+                  </a>
+                  <div className="ig-body">
+                    <div className="muted small">{p.publicado_at ? new Date(p.publicado_at).toLocaleDateString("es-CL", { day: "2-digit", month: "short" }) : ""}</div>
+                    <div className="ig-titulo">{nombrePieza(p.id)}</div>
+                    <div className="ig-metr">
+                      <span title="Alcance">👥 {compacto(p.alcance)}</span>
+                      <span title="Guardados">🔖 {compacto(p.guardados)}</span>
+                      <span title="Compartidos">↗ {compacto(p.compartidos)}</span>
+                      <span title="Comentarios">💬 {compacto(p.comentarios)}</span>
+                    </div>
+                    <div className="ig-negocio">
+                      <div><b>{r ? dec1(r.contactos) : "0"}</b><span>contactos</span></div>
+                      <div><b>{r ? dec1(r.agendas) : "0"}</b><span>agendas</span></div>
+                      <div className={r?.cash ? "cobro" : ""}><b>{r?.cash ? money(r.cash) : "—"}</b><span>cobrado</span></div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+            {!grilla.length && !loading && <p className="vacio">No hay publicaciones de Instagram en este período. Las historias, la bio y ManyChat están en “Todas las piezas”.</p>}
+          </div>
+        )}
+        {vista === "tabla" && <div className="table-wrap">
           <table>
             <thead>
               <tr>
@@ -157,7 +236,7 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
               {!visibles.length && !loading && <tr><td colSpan={COLS.length + 2} className="vacio">Sin contactos orgánicos en este período</td></tr>}
             </tbody>
           </table>
-        </div>
+        </div>}
       </section>
 
       <button className="link desplegable" onClick={() => setVerContactos(!verContactos)}>
