@@ -12,7 +12,7 @@ export interface PiezaIG {
   views: number | null; alcance: number | null; guardados: number | null; compartidos: number | null; likes: number | null; comentarios: number | null;
 }
 interface LeadIG { lead_id: number; usuario: string | null; nombre: string | null; primer_toque: string; ultimo_toque: string; toques: number; pieza_primera: string | null; ultimo_tipo: string | null; ultimo_texto: string | null; link: string | null; ghl_contact_id: string | null; agendo: boolean; cobrado: number }
-interface Auto { id: number | null; nombre: string; disparador: "comentario" | "dm" | "historia"; palabras: string[]; pieza_id: string | null; respuesta_publica: string | null; mensaje: string; destino: string; activa: boolean; enviados?: number; fallidos?: number; clics?: number; ultimo_envio?: string | null; ultimo_error?: string | null }
+interface Auto { id: number | null; nombre: string; disparador: "comentario" | "dm" | "historia"; palabras: string[]; pieza_id: string | null; respuesta_publica: string | null; mensaje: string; destino: string; activa: boolean; mensaje_apertura?: string | null; boton_apertura?: string | null; boton_link?: string | null; enviados?: number; fallidos?: number; links?: number; clics?: number; ultimo_envio?: string | null; ultimo_error?: string | null }
 interface Estado { conectada: boolean; usuario: string | null; token_vence: string | null; ultimo_sync: { ok: boolean; at: string; detalle: string } | null; ultimo_evento: string | null; leads: number; toques: number; piezas_ig: number; mensajes: number }
 interface Paso { at: string; paso: string; detalle: string | null; pieza_id: string | null }
 
@@ -29,8 +29,23 @@ const hace = (s: string | null) => {
   const m = Math.round((Date.now() - new Date(s).getTime()) / 60000);
   return m < 1 ? "recién" : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`;
 };
-const NUEVA: Auto = { id: null, nombre: "", disparador: "comentario", palabras: [], pieza_id: null, respuesta_publica: "¡Te lo mandé por DM! 📩", mensaje: "¡Hola {nombre}! Aquí tienes el acceso: {link}", destino: "https://www.waysuccess.io/", activa: false };
-const previa = (msg: string) => msg.split("{nombre}").join("@maria.coach").split("{link}").join("waysuccess.io/l/Ab3xQ9");
+const NUEVA: Auto = { id: null, nombre: "", disparador: "comentario", palabras: [], pieza_id: null, respuesta_publica: "¡Te lo mandé por DM! 📩", mensaje: "¡Hola {nombre}! Aquí tienes el acceso: {link}", destino: "https://www.waysuccess.io/", activa: false, mensaje_apertura: null, boton_apertura: null, boton_link: null };
+const previa = (msg: string, palabra = "JESSI") => (msg ?? "").split("{nombre}").join("@maria.coach").split("{palabra}").join(palabra).split("{link}").join("waysuccess.io/l/Ab3xQ9");
+const dosPasos = (a: Auto) => !!(a.mensaje_apertura && a.boton_apertura);
+const linkOk = (a: Auto) => a.mensaje.includes("{link}") || !!a.boton_link?.trim();
+// Vista previa del DM tal como llega: apertura con botón → mensaje con el botón del link
+function ConversacionDM({ a, chica }: { a: Auto; chica?: boolean }) {
+  const pal = a.palabras.find((p) => p.trim())?.trim().toUpperCase() || "JESSI";
+  return (
+    <div className={`dm-conv ${chica ? "chica" : ""}`}>
+      {dosPasos(a) && (<>
+        <div className={`dm-bubble ${chica ? "clamp3" : "grande"}`}>{previa(a.mensaje_apertura!, pal)}<span className="dm-btn">{a.boton_apertura}</span></div>
+        {!chica && <div className="dm-yo">{a.boton_apertura}</div>}
+      </>)}
+      {(!chica || !dosPasos(a)) && <div className={`dm-bubble ${chica ? "clamp3" : "grande"}`}>{previa(a.mensaje.split("{link}").join(a.boton_link ? "" : "{link}"), pal).trim()}{a.boton_link ? <span className="dm-btn">🔗 {a.boton_link}</span> : null}</div>}
+    </div>
+  );
+}
 
 export function nombrePiezaIG(id: string | null, piezas: Map<string, PiezaIG>) {
   if (!id) return "Sin pieza";
@@ -100,6 +115,7 @@ export function OrganicoIG({ from, to, reloadKey, piezas }: { from: string; to: 
     const { error } = await supabase.rpc("org_automatizacion_guardar", {
       p_id: a.id, p_nombre: a.nombre.trim() || "Sin nombre", p_disparador: a.disparador, p_palabras: a.palabras.map((p) => p.trim()).filter(Boolean),
       p_mensaje: a.mensaje, p_respuesta: a.respuesta_publica ?? "", p_destino: a.destino, p_activa: a.activa, p_pieza: a.pieza_id ?? "",
+      p_apertura: a.mensaje_apertura ?? "", p_boton_apertura: a.boton_apertura ?? "", p_boton_link: a.boton_link ?? "",
     });
     setGuardando(null);
     if (error) { setErr(error.message); return; }
@@ -141,9 +157,10 @@ export function OrganicoIG({ from, to, reloadKey, piezas }: { from: string; to: 
               <Switch on={a.activa} disabled={guardando === a.id} label={`${a.activa ? "Apagar" : "Prender"} ${a.nombre}`} onChange={() => guardar({ ...a, activa: !a.activa }, a.id!)} />
             </header>
             <div className="chips">{a.palabras.length ? a.palabras.map((p) => <span key={p} className="chip chip-kw">{p}</span>) : <span className="chip chip-none">Cualquier texto</span>}</div>
-            <div className="dm-bubble">{previa(a.mensaje)}</div>
+            <ConversacionDM a={a} chica />
             <footer>
-              <span><b>{num(a.enviados ?? 0)}</b> enviados</span>
+              <span title="Personas que recibieron el primer DM"><b>{num(a.enviados ?? 0)}</b> enviados</span>
+              {dosPasos(a) && <span title="Tocaron el botón y recibieron su link"><b>{num(a.links ?? 0)}</b> pidieron link</span>}
               <span><b>{num(a.clics ?? 0)}</b> clics</span>
               {a.fallidos ? <span className="error" title={a.ultimo_error ?? ""}><b>{num(a.fallidos)}</b> fallidos</span> : null}
               <button className="link" onClick={() => setEdit({ ...a })}>Editar</button>
@@ -151,7 +168,7 @@ export function OrganicoIG({ from, to, reloadKey, piezas }: { from: string; to: 
           </article>
         ))}
       </div>
-      {activas > 0 && <p className="aviso">Las automatizaciones activas responden desde nuestra app. Apaga la misma palabra clave en ManyChat para que nadie reciba dos mensajes.</p>}
+      {activas > 0 && <p className="muted small">Las automatizaciones activas responden desde nuestra app (ManyChat apagado). Cada persona recibe su propio link: lo que haga después (quiz, agenda, pago) queda atribuido a la publicación donde comentó.</p>}
 
       {edit && (
         <div className="card auto-editor">
@@ -173,13 +190,17 @@ export function OrganicoIG({ from, to, reloadKey, piezas }: { from: string; to: 
               </select>
             </label>
             {edit.disparador === "comentario" && <label>Respuesta pública al comentario <span className="muted">(opcional)</span><input value={edit.respuesta_publica ?? ""} onChange={(e) => setEdit({ ...edit, respuesta_publica: e.target.value })} /></label>}
-            <label>Mensaje por DM <span className="muted">{"{link}"} = link único · {"{nombre}"} = su usuario</span><textarea rows={3} value={edit.mensaje} onChange={(e) => setEdit({ ...edit, mensaje: e.target.value })} /></label>
+            <label>1 · DM de apertura <span className="muted">(opcional · {"{palabra}"} = lo que comentó · {"{nombre}"} = su usuario)</span><textarea rows={6} value={edit.mensaje_apertura ?? ""} onChange={(e) => setEdit({ ...edit, mensaje_apertura: e.target.value })} placeholder="¡Hola! Gracias por comentar {palabra} 🙌 …" /></label>
+            {!!edit.mensaje_apertura?.trim() && <label>Botón de la apertura <span className="muted">(al tocarlo le llega el link)</span><input value={edit.boton_apertura ?? ""} onChange={(e) => setEdit({ ...edit, boton_apertura: e.target.value })} placeholder="Sí, quiero mis 30 guiones" /></label>}
+            <label>{edit.mensaje_apertura?.trim() ? "2 · DM con el link" : "DM con el link"} <span className="muted">{"{link}"} = link único (o usa el botón)</span><textarea rows={4} value={edit.mensaje} onChange={(e) => setEdit({ ...edit, mensaje: e.target.value })} /></label>
+            <label>Botón del link <span className="muted">(opcional · si lo pones, el link va en el botón)</span><input value={edit.boton_link ?? ""} onChange={(e) => setEdit({ ...edit, boton_link: e.target.value })} placeholder="Ver mis 30 guiones" /></label>
             <label>A dónde lleva el link<input value={edit.destino} onChange={(e) => setEdit({ ...edit, destino: e.target.value })} /></label>
             <label className="fila"><Switch on={edit.activa} label="Activa" onChange={() => setEdit({ ...edit, activa: !edit.activa })} /> {edit.activa ? "Activa: responde nuestra app" : "Apagada: no responde"}</label>
             <div className="fila">
-              <button className="primary" disabled={guardando === "form" || !edit.mensaje.includes("{link}")} onClick={() => guardar(edit, "form")}>{guardando === "form" ? "Guardando…" : "Guardar"}</button>
+              <button className="primary" disabled={guardando === "form" || !linkOk(edit) || (!!edit.mensaje_apertura?.trim() && !edit.boton_apertura?.trim())} onClick={() => guardar(edit, "form")}>{guardando === "form" ? "Guardando…" : "Guardar"}</button>
               <button className="link" onClick={() => setEdit(null)}>Cancelar</button>
-              {!edit.mensaje.includes("{link}") && <span className="error small">El mensaje tiene que incluir {"{link}"}</span>}
+              {!linkOk(edit) && <span className="error small">Pon {"{link}"} en el mensaje o el texto del botón del link</span>}
+              {!!edit.mensaje_apertura?.trim() && !edit.boton_apertura?.trim() && <span className="error small">Falta el texto del botón de la apertura</span>}
             </div>
           </div>
           <div className="telefono" aria-label="Vista previa">
@@ -187,7 +208,7 @@ export function OrganicoIG({ from, to, reloadKey, piezas }: { from: string; to: 
             {edit.disparador === "comentario" && (
               <div className="tel-coment"><b>maria.coach</b> {edit.palabras.find((p) => p.trim())?.trim() || "Quiero"}{edit.respuesta_publica ? <div className="tel-resp"><b>{estado?.usuario ?? "tu_cuenta"}</b> {edit.respuesta_publica}</div> : null}</div>
             )}
-            <div className="dm-bubble grande">{previa(edit.mensaje)}</div>
+            <ConversacionDM a={edit} />
           </div>
         </div>
       )}

@@ -373,3 +373,10 @@ tr.detalle .timeline { display: flex; flex-direction: column; align-items: stret
   .personas th:nth-child(2)::after { content: "Pieza"; font-size: 12px; }
   .personas th, .personas td { padding: 8px 6px; }
 }
+
+/* 27-11 DM en 2 pasos (apertura con botón → link) */
+.dm-conv { display: grid; gap: 8px; }
+.dm-btn { display: block; margin-top: 8px; padding: 7px 10px; border-radius: 10px; background: rgb(255 255 255 / 0.18); text-align: center; font-weight: 600; }
+.dm-yo { justify-self: end; max-width: 80%; background: var(--surface-2); border: 1px solid var(--border); padding: 7px 12px; border-radius: 16px 16px 4px 16px; font-size: 13px; }
+.dm-bubble.clamp3 { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.dm-bubble.clamp3 .dm-btn { display: none; }
