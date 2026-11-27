@@ -168,9 +168,11 @@ async function automatizar(o: { disparador: "comentario" | "dm" | "historia"; te
         // flujo de 2 pasos (como ManyChat): DM de apertura con botón → al tocarlo (o responder) va el DM con el link
         texto = llenar(a.mensaje_apertura);
         const titulos = [String(a.boton_apertura), corto(String(a.boton_apertura))].filter((t, i, arr) => arr.indexOf(t) === i);
+        // primero respuesta rápida: el toque llega por el campo "messages" (ya suscrito); el botón de plantilla necesita
+        // "messaging_postbacks", que no se puede activar mientras la cuenta de desarrollador esté bloqueada (27-11)
         const intentos = [
-          ...titulos.map((title) => ({ attachment: { type: "template", payload: { template_type: "button", text: texto.slice(0, 640), buttons: [{ type: "postback", title, payload: `AUTO2:${fila.id}` }] } } })),
           { text: texto.slice(0, 1000), quick_replies: [{ content_type: "text", title: corto(String(a.boton_apertura)), payload: `AUTO2:${fila.id}` }] },
+          ...titulos.map((title) => ({ attachment: { type: "template", payload: { template_type: "button", text: texto.slice(0, 640), buttons: [{ type: "postback", title, payload: `AUTO2:${fila.id}` }] } } })),
         ];
         let enviado = false;
         for (const message of intentos) {
