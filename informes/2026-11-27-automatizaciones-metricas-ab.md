@@ -73,7 +73,7 @@ Probabilidad de que el nombre le gane al @: 15 % en tap rate, 34 % en clic/apert
 ## 3. Pendiente / necesita OK del dueño
 
 - **Recordatorio**: construido y apagado. Limitación real de Meta: a quien **comentó** solo se le puede mandar un mensaje privado hasta que responda, así que el recordatorio solo sirve para quien escribió por DM o respondió una historia (flujo `ig-dm-palabras`, cuyo cron también espera OK). Prenderlo = OK del dueño.
-- **Arrancar cualquier test** = OK del dueño (ninguno creado).
+- **Arrancar cualquier test** = OK del dueño (solo existe el sugerido, en borrador; ninguno corriendo).
 - `ig-dm-palabras` (sin cron) sigue con el saludo viejo (@usuario) y sin variantes; si se activa, conviene pasarle el mismo cambio.
 - El conteo de comentarios viene de `ig-comentarios` (cada hora), por eso a veces aperturas > comentarios (104 %) hasta la próxima sincronización.
 - Push a `main` hecho (`eb61e14`), Vercel sirve el bundle nuevo. Ese push también subió `465f07a` (ig-dm-palabras, solo código de la función e informe; sin cambios en la web), que estaba en local sin subir.
@@ -82,7 +82,7 @@ Probabilidad de que el nombre le gane al @: 15 % en tap rate, 34 % en clic/apert
 ## 4. Para memoria
 
 - 28-11: sección **Automatizaciones** en Orgánico (embudo por palabra/publicación/saludo + tests A/B). RPC `org_auto_embudo/ab/alertas/tests_*`; base `org_auto_filas()`; agendas con `org_base_base` (mismas reglas que Resumen).
-- A/B: `org_auto_tests` (borrador/corriendo/pausado/cerrado, uno abierto por automatización), `org_auto_variantes` (A = control), `org_auto_asignaciones` (fija por persona). ig-webhook v14 usa `org_auto_asignar`; sin test corriendo = v13.
+- A/B: `org_auto_tests` (borrador/corriendo/pausado/cerrado, uno abierto por automatización), `org_auto_variantes` (A = control), `org_auto_asignaciones` (fija por persona). ig-webhook v15 usa `org_auto_asignar`; sin test corriendo = v13.
 - Saludo: `org_nombre_pila` + tabla `org_nombres_pila` (agregar nombres ahí). Ya no se saluda con @usuario. `org_mensajes.saludo` / `saludo2`.
 - Meta: a un comentario solo se le puede mandar 1 mensaje privado hasta que responda → recordatorios solo para DM/historia.
 - Desde 24-11 el quiz no crea lead hasta el calendario: el "lead" del orgánico se mide con `quiz_eventos` por `utm_term` (slug).
