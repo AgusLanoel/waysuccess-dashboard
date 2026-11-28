@@ -89,33 +89,57 @@ async function post(path: string, body: unknown) {
   return j;
 }
 
-// {nombre}: nombre de pila del perfil (si Instagram lo entrega) → si no, @usuario → si no, vacío ("¡Hola!")
-async function nombreDe(igsid: string | null, username: string | null): Promise<string> {
+// {nombre} (28-11): nombre de pila del perfil (name) → si no, nombre sacado del usuario cuando parece un nombre
+// (rpc org_nombre_pila: "adrian77d" → Adrián, "fernandez.sergio.d1982" → Sergio) → si no, vacío ("¡Hola!").
+// Ya no se usa @usuario (cuentas de negocio tipo @sm.paisajismo). tipo = nombre_api | nombre_usuario | sin_nombre.
+// Si la rpc falla, comportamiento anterior (name o @usuario, tipo "arroba").
+async function saludoDe(igsid: string | null, username: string | null): Promise<{ nombre: string; tipo: string; usuario?: string | null }> {
+  let name: string | null = null, user = username;
   if (igsid) {
-    try {
-      const p = await get(`${igsid}?fields=name,username`);
-      const pila = String(p?.name ?? "").trim().split(/\s+/)[0] ?? "";
-      if (pila && /\p{L}/u.test(pila)) return pila.charAt(0).toUpperCase() + pila.slice(1).toLowerCase();
-      if (p?.username) return `@${p.username}`;
-    } catch (e) { console.error("nombre", String(e)); }
+    try { const p = await get(`${igsid}?fields=name,username`); name = p?.name ?? null; user = p?.username ?? user; }
+    catch (e) { console.error("nombre", String(e)); }
   }
-  return username ? `@${username}` : "";
+  try {
+    const { data, error } = await sb.rpc("org_nombre_pila", { p_name: name, p_username: user });
+    const r = (data as any[])?.[0];
+    if (!error && r) return { nombre: String(r.nombre ?? ""), tipo: String(r.tipo), usuario: user };
+  } catch (e) { console.error("org_nombre_pila", String(e)); }
+  const pila = String(name ?? "").trim().split(/\s+/)[0] ?? "";
+  if (pila && /\p{L}/u.test(pila)) return { nombre: pila.charAt(0).toUpperCase() + pila.slice(1).toLowerCase(), tipo: "nombre_api" };
+  return user ? { nombre: `@${user}`, tipo: "arroba" } : { nombre: "", tipo: "sin_nombre" };
+}
+
+// A/B (28-11): si la automatización tiene un test CORRIENDO, la persona recibe su variante (fija por persona).
+// Sin test corriendo (o si la rpc falla) → null y todo sigue exactamente igual que v13.
+async function varianteDe(autoId: number, usuario: string | null) {
+  if (!usuario) return null;
+  try {
+    const { data, error } = await sb.rpc("org_auto_asignar", { p_auto: autoId, p_usuario: usuario });
+    if (error) { console.error("org_auto_asignar", error.message); return null; }
+    return ((data as any[])?.[0] ?? null) as { test_id: number; variante_id: number; letra: string; mensaje_apertura: string | null; boton_apertura: string | null; mensaje: string | null; boton_link: string | null; destino: string | null } | null;
+  } catch (e) { console.error("org_auto_asignar", String(e)); return null; }
 }
 
 async function automatizar(o: { disparador: "comentario" | "dm" | "historia"; texto: string; pieza: string | null; lead: { id: number; ig_username: string | null }; comentarioId?: string; senderId?: string; igId?: string; eventoId: string }) {
   const { data: autos } = await sb.from("org_automatizaciones").select("*").eq("activa", true).eq("disparador", o.disparador);
-  for (const a of autos ?? []) {
-    if (a.pieza_id && a.pieza_id !== o.pieza) continue;
-    const palabra = coincide(a.palabras, o.texto);
+  for (const a0 of autos ?? []) {
+    if (a0.pieza_id && a0.pieza_id !== o.pieza) continue;
+    const palabra = coincide(a0.palabras, o.texto);
     if (palabra === null) continue;
     // candado: una sola respuesta por automatización y comentario/mensaje (Meta reintenta los webhooks)
-    const { data: fila, error: dup } = await sb.from("org_mensajes").insert({ lead_id: o.lead.id, automatizacion_id: a.id, comentario_id: o.eventoId, tipo: o.disparador, ig_sender: o.senderId ?? o.igId ?? null, username: o.lead.ig_username }).select("id").single();
+    const { data: fila, error: dup } = await sb.from("org_mensajes").insert({ lead_id: o.lead.id, automatizacion_id: a0.id, comentario_id: o.eventoId, tipo: o.disparador, ig_sender: o.senderId ?? o.igId ?? null, username: o.lead.ig_username }).select("id").single();
     if (dup || !fila) continue;
+    const v = await varianteDe(a0.id, o.senderId ?? o.igId ?? null);
+    const a = v ? { ...a0, mensaje_apertura: v.mensaje_apertura ?? a0.mensaje_apertura, boton_apertura: v.boton_apertura ?? a0.boton_apertura, mensaje: v.mensaje ?? a0.mensaje, boton_link: v.boton_link ?? a0.boton_link, destino: v.destino ?? a0.destino } : a0;
     const pieza = o.pieza ?? `auto-${a.nombre.toLowerCase()}`;
     if (!o.pieza) await sb.from("org_piezas").upsert({ id: pieza, tipo: "dm", titulo: `Automatización ${a.nombre}` }, { onConflict: "id", ignoreDuplicates: true });
     const { data: slug } = await sb.rpc("org_crear_link", { p_pieza: pieza, p_lead: o.lead.id, p_destino: a.destino, p_auto: a.nombre, p_medium: o.disparador === "comentario" ? "comentario" : "dm" });
-    const nombre = await nombreDe(o.senderId ?? o.igId ?? null, o.lead.ig_username);
-    const llenar = (m: string) => String(m ?? "").replaceAll("{link}", LINK + slug).replaceAll("{nombre}", nombre).replaceAll("{palabra}", (palabra || "").toUpperCase()).replace(/[ \t]+([!,.])/g, "$1");
+    if (v && slug) await sb.from("org_links").update({ variante_id: v.variante_id, variante: v.letra }).eq("slug", slug);
+    const sal = await saludoDe(o.senderId ?? o.igId ?? null, o.lead.ig_username);
+    const nombre = sal.nombre;
+    // {nombre_o_usuario}: el nombre si lo hay; si no, @usuario (para el test sugerido "@usuario vs sin nombre")
+    const nomUsu = nombre || (sal.usuario ? `@${sal.usuario}` : "");
+    const llenar = (m: string) => String(m ?? "").replaceAll("{link}", LINK + slug).replaceAll("{nombre_o_usuario}", nomUsu).replaceAll("{nombre}", nombre).replaceAll("{palabra}", (palabra || "").toUpperCase()).replace(/[ \t]+([!,.])/g, "$1");
     const recipient = o.comentarioId ? { comment_id: o.comentarioId } : { id: o.senderId };
     let error: string | null = null;
     let texto = llenar(a.mensaje);
@@ -152,6 +176,8 @@ async function automatizar(o: { disparador: "comentario" | "dm" | "historia"; te
       }
     } catch (e) { error = String(e).slice(0, 300); }
     await sb.from("org_mensajes").update({ slug, texto, ok: !error, error, paso: error ? 1 : paso, ...(paso === 2 && !error ? { link_enviado_at: new Date().toISOString() } : {}) }).eq("id", fila.id);
+    // extras 28-11 en un update aparte: si fallara (columna nueva), no toca el registro principal
+    await sb.from("org_mensajes").update({ saludo: sal.tipo, ...(v ? { variante_id: v.variante_id, test_id: v.test_id } : {}) }).eq("id", fila.id).then(({ error: e }) => e && console.error("extras", e.message));
     break; // una automatización por evento
   }
 }

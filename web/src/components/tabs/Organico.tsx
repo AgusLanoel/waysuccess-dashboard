@@ -4,6 +4,7 @@ import { money, num, pct, ratio } from "../../lib/format";
 import { ghlContacto } from "../ui";
 import { OrganicoIG, nombrePiezaIG, type PiezaIG } from "./OrganicoIG";
 import { OrganicoFormatos, type ComentF } from "./OrganicoFormatos";
+import { OrganicoAutomatizaciones } from "./OrganicoAutomatizaciones";
 
 // Pestaña Orgánico (26-11, solo owners): el "Ads Manager" del contenido. Qué pieza (reel, carrusel, historia, bio,
 // automatización de ManyChat) trajo cada contacto, agenda, asistencia y venta. Se arma con los UTM que GHL guarda en
@@ -235,6 +236,8 @@ export function Organico({ from, to, reloadKey }: { from: string; to: string; re
           </div>
         </section>
       )}
+
+      <OrganicoAutomatizaciones from={from} to={to} reloadKey={reloadKey} piezas={piezas} />
 
       <OrganicoIG from={from} to={to} reloadKey={reloadKey} piezas={piezas} />
 

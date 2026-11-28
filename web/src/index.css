@@ -289,7 +289,7 @@ label.fila { display: flex; }
 .ig-negocio span { font-size: 11px; color: var(--muted); }
 .ig-negocio .cobro b { color: var(--good); }
 
-.ig-bloque { display: grid; gap: 12px; margin-top: 8px; }
+.ig-bloque { display: grid; gap: 12px; margin-top: 8px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .ig-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ig-head .section-title { margin: 0; font-size: 18px; }
 .estado-strip { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -433,3 +433,40 @@ tr.detalle .timeline { display: flex; flex-direction: column; align-items: stret
 .recup { color: #8a5cf6; font-weight: 600; font-size: .85em; margin-left: 3px; cursor: help; white-space: nowrap; }
 .aviso-recup { margin: 0; padding: 6px 10px; border-radius: 8px; color: var(--text-2); background: color-mix(in srgb, #8a5cf6 8%, transparent); border: 1px dashed color-mix(in srgb, #8a5cf6 35%, var(--border)); }
 .ig-metr .kw { color: #8a5cf6; }
+
+/* 28-11 Automatizaciones: embudo por palabra/publicación/saludo + tests A/B (móvil primero) */
+.auto-bloque { margin-top: 18px; }
+.ae-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); }
+.auto-embudo { padding: 14px; display: grid; gap: 10px; align-content: start; border-top: 3px solid var(--tone); }
+.ae-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.ae-kpis { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
+.ae-kpis b { font-size: 16px; color: var(--text); margin-right: 2px; }
+.auto-embudo .funnel li { grid-template-columns: 96px minmax(60px, 1fr) 36px minmax(0, 150px); }
+.auto-embudo .funnel-rate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ae-pie { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--text-2); }
+.ae-pie b { color: var(--text); }
+.error-aviso { color: var(--critical); }
+.ab-lista { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+.ab-card { padding: 14px; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); border-left: 4px solid var(--axis); }
+.ab-card.ab-corriendo { border-left-color: var(--good); }
+.ab-card.ab-pausado { border-left-color: #e3a008; }
+.ab-estado-corriendo { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
+.ab-estado-pausado { background: color-mix(in srgb, #e3a008 16%, transparent); color: #b7791f; }
+.ab-estado-borrador, .ab-estado-cerrado { background: var(--surface-2); color: var(--text-2); }
+.ab-tabla td, .ab-tabla th { white-space: nowrap; }
+.ab-ganadora td { background: color-mix(in srgb, var(--good) 8%, transparent); }
+.ab-si { color: var(--good); font-weight: 700; }
+.ab-nota { margin: 0; }
+.ab-acciones { flex-wrap: wrap; gap: 8px; }
+.ab-acciones select { max-width: 100%; }
+.ab-editor, .ab-nuevo { border-top: 1px solid var(--border); padding-top: 10px; display: grid; gap: 8px; }
+.ab-nuevo { padding: 14px; }
+.ab-recs { padding: 12px 14px; }
+.ab-recs summary { cursor: pointer; }
+.ab-rec { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.ab-rec input[type="text"], .ab-rec > input:not([type]) { flex: 1 1 240px; min-width: 0; }
+@media (max-width: 640px) {
+  .auto-embudo .funnel li { grid-template-columns: 84px minmax(40px, 1fr) 30px 92px; gap: 6px; }
+  .auto-embudo .funnel-rate { display: block; font-size: 11px; }
+  .ae-kpis b { font-size: 15px; }
+}
