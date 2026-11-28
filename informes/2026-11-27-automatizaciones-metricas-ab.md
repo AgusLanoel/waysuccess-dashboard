@@ -12,7 +12,7 @@ Orden: `waysuccess-hq/ordenes/2026-11-27-datos-automatizaciones-metricas-ab.md` 
 - Índices nuevos: slug en `org_mensajes`/`org_clics`, `utm_term` en `quiz_eventos`, campo slug de GHL.
 
 **Edge functions (código igual en el repo):**
-- `ig-webhook` v14 (`supabase/functions/ig-webhook/index.ts`): (a) A/B: si la automatización tiene un test **corriendo**, toma los textos y el destino de la variante de la persona y guarda `variante_id/test_id` en `org_mensajes` y `org_links`; sin test → idéntico a v13. (b) Saludo: `{nombre}` = name del perfil → si no hay, nombre sacado del usuario cuando es un nombre de pila → si no, "¡Hola!" (ya no "@usuario"); guarda `saludo` (nombre_api / nombre_usuario / sin_nombre / arroba). Si la RPC falla, vuelve al comportamiento anterior.
+- `ig-webhook` v15 (`supabase/functions/ig-webhook/index.ts`): (a) A/B: si la automatización tiene un test **corriendo**, toma los textos y el destino de la variante de la persona y guarda `variante_id/test_id` en `org_mensajes` y `org_links`; sin test → idéntico a v13. (b) Saludo: `{nombre}` = name del perfil → si no hay, nombre sacado del usuario cuando es un nombre de pila → si no, "¡Hola!" (ya no "@usuario"); guarda `saludo` (nombre_api / nombre_usuario / sin_nombre / arroba). Si la RPC falla, vuelve al comportamiento anterior. Variable nueva `{nombre_o_usuario}` (nombre si lo hay; si no, @usuario) para poder testear el @.
 - `ig-respuestas` v3 (`supabase/functions/ig-respuestas/index.ts`): paso 2 con el texto de la variante (si la hay), guarda `respondio_at` (para medir toque→link) y personaliza el paso 2 con el nombre ("Adrián, acá lo tienes 👇…", nunca @usuario; guarda `saludo2`). Recordatorio único **apagado**: solo actúa si alguien lo prende y solo para aperturas por DM/historia.
 - Respaldos para volver atrás al instante: commit anterior `465f07a` (v13 y v2).
 
@@ -29,8 +29,8 @@ Orden: `waysuccess-hq/ordenes/2026-11-27-datos-automatizaciones-metricas-ab.md` 
 - **A/B sin tocar producción:** prueba dentro de una transacción con rollback: sin correr → 0 asignaciones; corriendo 50/50 sobre 2.000 usuarios → A 981 / B 1.019; misma persona siempre misma variante (200/200); edición bloqueada con personas; pausado → 0; cerrar copia la ganadora a la automatización. Después: 0 tests, 0 asignaciones, botón de JESSI intacto ("Quiero mis guiones").
 - **Nombre:** sobre los 63 usuarios reales: 16 con name del perfil, 21 recuperados del usuario (samuelpr_9→Samuel, fernandez.sergio.d1982→Sergio, miguelangel0605→Miguel, dra.jimenabardales→Jimena, soydani_silva→Dani), 26 sin nombre → "¡Hola!" (sm.paisajismo, imperiogtmultiservicesllc, azteca.studio…). Antes: 46 de 65 salían con @usuario.
 - **Edge functions:** `tsc` estricto + `esbuild` sin errores; ig-webhook v14 arranca (GET de prueba → 403 esperado).
-- **Comentario real después del deploy:** {{VERIFICACION_WEBHOOK}}
-- **Paso 2 real:** {{VERIFICACION_RESPUESTAS}}
+- **Comentarios reales después del deploy (logs + `org_mensajes`):** v14: leo.ymc (CONTENIDO, 03:18) → "¡Hola Leo!…" ok, paso 1, `saludo=nombre_usuario` (antes habría sido "@leo.ymc"). v15: whois_kag (CONTENIDO, 03:22), **dmoyagon1 (JESSI, 03:29)** y profejorge80 (CONTENIDO, 03:43) → "¡Hola! Gracias por comentar…" ok, sin errores, sin variante (no hay test corriendo), resto del texto idéntico a v13. JESSI sigue respondiendo igual; no hizo falta volver atrás.
+- **Paso 2 real (ig-respuestas v3):** adrian77d (JESSI) tocó el botón 03:53:13 → link enviado 03:54:22 (69 s), sin error, `respondio_at` y `saludo2=nombre_api` guardados ("Adrián, acá lo tienes 👇…"). El cron siguió respondiendo 200 cada minuto.
 - **Diseño:** capturas con datos simulados (playwright-core, intercepta Supabase) en escritorio 1440 y celular 390: sin scroll horizontal (había desborde en celular por la grilla; corregido con `minmax(0,1fr)` en `.ig-bloque`, que también arregla el bloque Instagram). `npm run build` sin errores.
 
 ## Números reales del embudo por palabra (desde que responde nuestra app, 27-11 17:15 UTC → 28-11 03:15 UTC)
@@ -68,7 +68,7 @@ Probabilidad de que el nombre le gane al @: 15 % en tap rate, 34 % en clic/apert
 3. **Arrancar**. Desde ahí cada persona nueva recibe una variante al azar según el peso, siempre la misma. Pausar = vuelve a todos a la A.
 4. Cuando una variante dice ✓ (≥ 95 % y ≥ 100 aperturas por lado), **Cerrar test** eligiendo con cuál se queda: pasa a ser el texto de la automatización. El historial queda.
 
-**Test sugerido (preparado, NO arrancado):** "@usuario vs sin nombre" — hoy el código ya no manda @usuario (orden del director), así que para probarlo hay que crear el test en JESSI con A = actual ("¡Hola {nombre}!" → sale "¡Hola!" sin nombre) y B con "¡Hola @{usuario}!"… {{nota}} Ojo: `{usuario}` no existe como variable; si el dueño quiere este test, pedirlo y lo agrego (10 min). Alternativa que sí funciona hoy: A "¡Hola {nombre}! Gracias por comentar…" vs B "Gracias por comentar {palabra} 🙌…" (sin saludo).
+**Test sugerido, creado en BORRADOR (no arrancado):** "@usuario vs sin nombre (sugerido)" en JESSI (test id 2). A = texto actual ("¡Hola {nombre}!" → a quien no tiene nombre le sale "¡Hola!"); B = mismo texto con "¡Hola {nombre_o_usuario}!" (a quien no tiene nombre le sale "¡Hola @usuario!"). Para quien sí tiene nombre las dos variantes son iguales, así que el test mide solo el caso sin nombre. Métrica: clics ÷ aperturas. Para arrancarlo: Orgánico → Automatizaciones → Tests A/B → **Arrancar** (con OK del dueño). Con ~40 % de aperturas sin nombre y ~6 aperturas/hora, juntar 100 por variante lleva varios días.
 
 ## 3. Pendiente / necesita OK del dueño
 
@@ -76,7 +76,8 @@ Probabilidad de que el nombre le gane al @: 15 % en tap rate, 34 % en clic/apert
 - **Arrancar cualquier test** = OK del dueño (ninguno creado).
 - `ig-dm-palabras` (sin cron) sigue con el saludo viejo (@usuario) y sin variantes; si se activa, conviene pasarle el mismo cambio.
 - El conteo de comentarios viene de `ig-comentarios` (cada hora), por eso a veces aperturas > comentarios (104 %) hasta la próxima sincronización.
-- Push a `main`: {{PUSH}}
+- Push a `main` hecho (`eb61e14`), Vercel sirve el bundle nuevo. Ese push también subió `465f07a` (ig-dm-palabras, solo código de la función e informe; sin cambios en la web), que estaba en local sin subir.
+- Mejora chica propuesta: prefijos "profe/prof" en `org_nombre_pila` (profejorge80 hoy sale sin nombre).
 
 ## 4. Para memoria
 
